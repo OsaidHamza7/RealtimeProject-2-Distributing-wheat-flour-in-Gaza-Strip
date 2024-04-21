@@ -27,7 +27,15 @@
 #define GUIFIFO "/tmp/GUIFIFO"
 #define MAX_LINES 100
 #define MAX_LINE_LENGTH 255
-#define MAX_NUM_PROCESSES 100
+#define MAX_NUM_CONTINARS 100
+#define MSGQKEY_GROUND 1111    // key for MSG for all continars
+#define MSGQKEY_SAFE_AREA 2222 // key for MSG for safe storage area
+#define SEMKEY_FAMILIES 3333   // key for semaphore pid of the families
+
+struct String
+{
+    char str[MAX_LINE_LENGTH];
+};
 
 struct Container
 {
@@ -36,7 +44,6 @@ struct Container
     int dropping_time;
     int status; // 0: not crashed, 1: crashed
 };
-
 typedef struct Container Container;
 
 // ====================================================================================

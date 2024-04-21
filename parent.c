@@ -1,4 +1,5 @@
 #include "header.h"
+#include "ipcs.h"
 /*
   Osaid Hamza - Team Leader
   Razan Abdelrahman
@@ -13,16 +14,19 @@ void init_signals_handlers();
 void createPlanes();
 void getArguments(int *numberArray);
 void printArguments();
+void initializeIPCResources();
+void exitProgram(int signum);
 //***********************************************************************************
 int numberArray[MAX_LINES];
 int is_alarmed = 0;
-int arr_pids[MAX_NUM_PROCESSES];
+int arr_pids[MAX_NUM_CONTINARS];
 int size = 0;
 int i = 0;
 int pid = 0;
 char range_num_containers[50];
 char range_num_bags[50];
 char dropping_time[50];
+int msg_ground;
 int main(int argc, char **argv)
 {
     char *file_name = (char *)malloc(50 * sizeof(char));
@@ -45,6 +49,9 @@ int main(int argc, char **argv)
     alarm(simulation_threshold_time);
     createPlanes();
 
+    // initialize IPCs resources (shared memory, semaphores, message queues)
+    initializeIPCResources();
+
     while (1)
     {
         pause();
@@ -53,14 +60,13 @@ int main(int argc, char **argv)
             break;
         }
     }
-
-    killAllProcesses(arr_pids, num_cargo_planes);
+    // exitProgram();
     return 0;
 }
 
 void init_signals_handlers()
 {
-    if (sigset(SIGALRM, signal_handler_SIGALRM) == -1)
+    if (sigset(SIGALRM, exitProgram) == -1)
     { // set the signal handler for SIGALRM
         perror("Signal Error\n");
         exit(-1);
@@ -103,6 +109,14 @@ void createPlanes()
             break;
         }
     }
+}
+/*
+function to initialize IPCs resources (shared memory, semaphores, message queues)
+*/
+void initializeIPCResources()
+{
+    // Create a massage queue for the ground
+    msg_ground = createMessageQueue(MSGQKEY_GROUND, "parent.c");
 }
 
 void getArguments(int *numberArray)
@@ -148,6 +162,7 @@ void printArguments()
 }
 // function checkArguments
 void checkArguments(int argc, char **argv, char *file_name)
+
 {
     if (argc != 2) // check if the user passed the correct arguments
     {
@@ -159,4 +174,29 @@ void checkArguments(int argc, char **argv, char *file_name)
     {
         strcpy(file_name, argv[1]); // Use the file names provided by the user
     }
+}
+
+void exitProgram(int signum)
+{
+    is_alarmed = 1;
+    printf("The signal %d reached the parent, the program is finished.\n\n", signum);
+    fflush(stdout);
+
+    printf("\nKilling all child processes...\n");
+    fflush(stdout);
+
+    // kill all the customer processes
+    killAllProcesses(arr_pids, num_cargo_planes);
+    printf("All child processes killed\n");
+
+    printf("Cleaning up IPC resources...\n");
+    fflush(stdout);
+    sleep(5);
+    // delete the message queue for the ground
+    deleteMessageQueue(msg_ground);
+
+    printf("IPC resources cleaned up successfully\n");
+    printf("Exiting...\n");
+    fflush(stdout);
+    exit(0);
 }

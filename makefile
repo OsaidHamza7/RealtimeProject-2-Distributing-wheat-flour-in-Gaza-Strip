@@ -7,11 +7,11 @@ NAMES = parent plane
 
 all: parent plane
 
-parent: parent.c functions.c
-	$(CC) $(CFLAGS) -o parent parent.c functions.c $(LIBS)
+parent: parent.c functions.c ipcs.c
+	$(CC) $(CFLAGS) -o parent parent.c functions.c ipcs.c $(LIBS)
 
-plane:	plane.c functions.c
-	$(CC) $(CFLAGS) -o plane plane.c functions.c $(LIBS)
+plane:	plane.c functions.c ipcs.c 
+	$(CC) $(CFLAGS) -o plane plane.c functions.c ipcs.c $(LIBS)
 
 gui: gui.c
 	$(CC) gui.c functions.c -o gui $(UILIBS)

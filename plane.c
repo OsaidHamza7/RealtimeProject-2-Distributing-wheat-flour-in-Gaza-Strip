@@ -1,16 +1,17 @@
 #include "header.h"
-
+#include "ipcs.h"
 //***********************************************************************************
 void get_information_plane(char **argv);
 void createContainers();
+void printContainers();
 //***********************************************************************************
 int range_num_containers[2];
 int range_num_bags[2];
 int rane_dropping_time[2];
 
 int num_containers = 0;
-
 Container *containers;
+int msg_ground_id;
 int main(int argc, char **argv)
 {
     // check the number of arguments
@@ -25,40 +26,57 @@ int main(int argc, char **argv)
     get_information_plane(argv);
 
     createContainers();
+    printContainers();
+    // open the ground message queue
+    msg_ground_id = createMessageQueue(MSGQKEY_GROUND, "plane.c");
 
-    // write the bags to the shared memory,after dropping time of the container
+    // write the conainers to the ground message queue,after dropping time of the container
     for (int i = 0; i < num_containers; i++)
     { // always reach the ground safly
         sleep(containers[i].dropping_time);
         printf("Container %d is dropping %d bags of wheat flour\n", containers[i].num, containers[i].num_bags);
         fflush(stdout);
-        // write the bags to the shared memory
-        // write_to_sh(containers[i].num_bags,shared_memory);
+        if (msgsnd(msg_ground_id, &containers[i], sizeof(containers[i]), 0) == -1)
+        {
+            perror("Plane:msgsnd");
+            return 3;
+        }
+        printf("Container %d is dropped\n", containers[i].num);
     }
 
-    sleep(50);
     return 0;
 }
 
 void createContainers()
 {
     containers = (Container *)malloc(num_containers * sizeof(Container));
+
     for (int i = 0; i < num_containers; i++)
     {
-
         // fill the structs of the containers
         containers[i].num = i + 1;
         containers[i].num_bags = get_random_number(range_num_bags[0], range_num_bags[1]);
         containers[i].dropping_time = get_random_number(rane_dropping_time[0], rane_dropping_time[1]);
         containers[i].status = 0;
-        printf("Container %d is ready to drop %d bags of wheat flour in %d seconds\n", containers[i].num, containers[i].num_bags, containers[i].dropping_time);
-        fflush(stdout);
     }
 }
 
+void printContainers()
+{
+    printf("*****************************************************************************************\n");
+    printf("The plane is ready to drop %d wheat flour containers:\n", num_containers);
+    for (int i = 0; i < num_containers; i++)
+    {
+        printf("Container %d:\n", containers[i].num);
+        printf("Number of bags: %d\n", containers[i].num_bags);
+        printf("Dropping time: %d\n", containers[i].dropping_time);
+        printf("Status: %d\n", containers[i].status);
+        printf("--------------------\n");
+    }
+    printf("*****************************************************************************************\n");
+}
 void get_information_plane(char **argv)
 {
-
     split_string(argv[1], range_num_containers);
     split_string(argv[2], range_num_bags);
     split_string(argv[3], rane_dropping_time);
