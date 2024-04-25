@@ -16,17 +16,27 @@ void getArguments(int *numberArray);
 void printArguments();
 void initializeIPCResources();
 void exitProgram(int signum);
+void createOccupation();
 //***********************************************************************************
-int numberArray[MAX_LINES];
+int arr_of_arguments[MAX_LINES];
 int is_alarmed = 0;
-int arr_pids[MAX_NUM_CONTINARS];
+pid_t arr_pids_occupation[MAX_NUM_OCUPATIONS];
+pid_t arr_pids_planes[MAX_NUM_PLANES];
+Plane planes[MAX_NUM_PLANES];
 int size = 0;
 int i = 0;
 int pid = 0;
-char range_num_containers[50];
-char range_num_bags[50];
-char dropping_time[50];
+char range_num_containers[10];
+char range_num_bags[10];
+char range_dropping_time[10];
+char range_refill_planes[10];
 int msg_ground;
+int msg_safe_area;
+int num_occupation = 1;
+char *shmptr_plane;
+char str_num_cargo_planes[10];
+char plane_num[10];
+
 int main(int argc, char **argv)
 {
     char *file_name = (char *)malloc(50 * sizeof(char));
@@ -38,19 +48,20 @@ int main(int argc, char **argv)
     checkArguments(argc, argv, file_name);
 
     // to read from User defined numbers file (filename.txt)
-    readFromFile(file_name, numberArray);
+    readFromFile(file_name, arr_of_arguments);
 
     // get the arguments from the file
-    getArguments(numberArray);
+    getArguments(arr_of_arguments);
     printArguments();
-
-    init_signals_handlers();
-
-    alarm(simulation_threshold_time);
-    createPlanes();
 
     // initialize IPCs resources (shared memory, semaphores, message queues)
     initializeIPCResources();
+
+    init_signals_handlers();
+    alarm(simulation_threshold_time);
+
+    createPlanes();
+    createOccupation();
 
     while (1)
     {
@@ -97,26 +108,69 @@ void createPlanes()
         case 0: // I'm plane
             sprintf(range_num_containers, "%d %d", range_num_wheat_flour_containers[0], range_num_wheat_flour_containers[1]);
             sprintf(range_num_bags, "%d %d", range_num_bages[0], range_num_bages[1]);
-            sprintf(dropping_time, "%d %d", period_dropping_wheat_flour_container[0], period_dropping_wheat_flour_container[1]);
+            sprintf(range_dropping_time, "%d %d", period_dropping_wheat_flour_container[0], period_dropping_wheat_flour_container[1]);
+            sprintf(range_refill_planes, "%d %d", period_refill_planes[0], period_refill_planes[1]);
+            sprintf(str_num_cargo_planes, "%d", num_cargo_planes);
 
-            execlp("./plane", "plane", range_num_containers, range_num_bags, dropping_time, NULL);
+            sprintf(plane_num, "%d", i + 1);
+
+            execlp("./plane", "plane", plane_num, range_num_containers, range_num_bags, range_dropping_time, range_refill_planes, str_num_cargo_planes, NULL);
             perror("Error:Execute plane Failed.\n");
             exit(1);
             break;
 
         default: // I'm parent
-            arr_pids[i] = pid;
+            arr_pids_planes[i] = pid;
             break;
         }
     }
 }
+
+void createOccupation()
+{
+    for (i = 0; i < num_occupation; i++)
+    {
+
+        switch (pid = fork())
+        {
+
+        case -1: // Fork Failed
+            perror("Error:Fork occupation Failed.\n");
+            exit(1);
+            break;
+
+        case 0: // I'm occupation
+
+            sprintf(str_num_cargo_planes, "%d", num_cargo_planes);
+
+            execlp("./occupation", "occupation", str_num_cargo_planes, NULL);
+            perror("Error:Execute occupation Failed.\n");
+            exit(1);
+            break;
+
+        default: // I'm parent
+            arr_pids_occupation[i] = pid;
+            break;
+        }
+    }
+}
+
 /*
 function to initialize IPCs resources (shared memory, semaphores, message queues)
 */
 void initializeIPCResources()
 {
+    // Create a shared memory for all struct planes
+    shmptr_plane = createSharedMemory(SHKEY_PLANES, num_cargo_planes * sizeof(struct Plane), "parent.c");
+
+    // Copy the struct of all planes to the shared memory
+    memcpy(shmptr_plane, planes, num_cargo_planes * sizeof(struct Plane));
+
     // Create a massage queue for the ground
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "parent.c");
+
+    // Create a massage queue for the safe storage area
+    msg_safe_area = createMessageQueue(MSGQKEY_SAFE_AREA, "parent.c");
 }
 
 void getArguments(int *numberArray)
@@ -160,6 +214,7 @@ void printArguments()
     printf("threshold_martyred_distributing_workers = %d\n", threshold_martyred_distributing_workers);
     printf("threshold_num_deceased_families = %d\n", threshold_num_deceased_families);
 }
+
 // function checkArguments
 void checkArguments(int argc, char **argv, char *file_name)
 
@@ -182,17 +237,20 @@ void exitProgram(int signum)
     printf("The signal %d reached the parent, the program is finished.\n\n", signum);
     fflush(stdout);
 
-    printf("\nKilling all child processes...\n");
+    printf("\nKilling all processes...\n");
     fflush(stdout);
 
-    // kill all the customer processes
-    killAllProcesses(arr_pids, num_cargo_planes);
+    // kill all the planes processes
+    killAllProcesses(arr_pids_planes, num_cargo_planes);
+
+    // kill all the ocupations processes
+    killAllProcesses(arr_pids_occupation, num_occupation);
     printf("All child processes killed\n");
 
     printf("Cleaning up IPC resources...\n");
     fflush(stdout);
-    sleep(5);
-    // delete the message queue for the ground
+    // sleep(5);
+    //  delete the message queue for the ground
     deleteMessageQueue(msg_ground);
 
     printf("IPC resources cleaned up successfully\n");

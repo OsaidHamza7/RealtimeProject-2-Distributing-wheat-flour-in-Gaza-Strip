@@ -3,9 +3,9 @@ CFLAGS = -g -Wall
 ARGS= arguments.txt
 UILIBS = -lglut -lGLU -lGL -lm  -lrt
 LIBS = -lpthread
-NAMES = parent plane collecting_committee
+NAMES = parent plane occupation 
 
-all: parent plane collecting_committee
+all: parent plane occupation 
 
 parent: parent.c functions.c ipcs.c 
 	$(CC) $(CFLAGS) -o parent parent.c functions.c ipcs.c  $(LIBS)
@@ -15,6 +15,9 @@ plane:	plane.c functions.c ipcs.c
 
 collecting_committee: collecting_committee.c functions.c ipcs.c 
 	$(CC) $(CFLAGS) -o collecting_committee collecting_committee.c functions.c ipcs.c $(LIBS)
+	
+occupation:	occupation.c functions.c ipcs.c 
+	$(CC) $(CFLAGS) -o occupation occupation.c functions.c ipcs.c $(LIBS)
 
 gui: gui.c
 	$(CC) gui.c functions.c -o gui $(UILIBS)

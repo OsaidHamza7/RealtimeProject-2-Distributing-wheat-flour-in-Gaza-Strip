@@ -25,12 +25,19 @@
 
 #define FILE_NAME "arguments.txt"
 #define GUIFIFO "/tmp/GUIFIFO"
+
 #define MAX_LINES 100
 #define MAX_LINE_LENGTH 255
-#define MAX_NUM_CONTINARS 100
-#define MSGQKEY_GROUND 1111    // key for MSG for all continars
-#define MSGQKEY_SAFE_AREA 2222 // key for MSG for safe storage area
-#define SEMKEY_FAMILIES 3333   // key for semaphore pid of the families
+#define MAX_NUM_CONTINARS 20
+#define MAX_NUM_PLANES 100
+#define MAX_NUM_OCUPATIONS 10
+#define MAX_NUM_WORKERS_IN_COMMITTEE 10
+
+#define MSGQKEY_GROUND 1111    // key for message queue for the ground
+#define MSGQKEY_SAFE_AREA 2222 // key for message queue the safe storage area
+
+#define SHKEY_FAMILIES 3333 // key for shared memory pid of the families
+#define SHKEY_PLANES 4444   // key for shared memory pid of the planes
 
 struct String
 {
@@ -39,13 +46,40 @@ struct String
 
 struct Container
 {
-    int num;
-    int num_bags;
+    int conatiner_num;
+    int capacity_of_bags;
     int dropping_time;
-    int status; // 0: not crashed, 1: crashed
 };
 typedef struct Container Container;
 
+struct Plane
+{
+    int pid;
+    int plane_num;
+    int num_containers;
+    Container containers[MAX_NUM_CONTINARS];
+    int is_refilling;
+};
+typedef struct Plane Plane;
+
+
+
+struct Worker
+{
+    int worker_num;
+    int energy;
+    int trip_time;
+    int is_tripping;
+};
+typedef struct Worker Worker;
+
+struct Collecting_Committee
+{
+    int committee_num;
+    int num_workers;
+    Worker workers[MAX_NUM_WORKERS_IN_COMMITTEE];
+};
+typedef struct Collecting_Committee Collecting_Committee;
 // ====================================================================================
 extern int num_cargo_planes;
 extern int range_num_wheat_flour_containers[2];
