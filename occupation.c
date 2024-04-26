@@ -4,11 +4,14 @@
 void getCurrentPlaneNumbers();
 //***********************************************************************************
 char *shmptr_plane;
+char *shmptr_collecting_committees;
 Plane *planes;
+Collecting_Committee *collecting_committees;
 int current_planes_numbers[10]; // array of the current plane numbers
 int crrent_number_planes;       // Number of current planes
 int is_planes_here = 0;         // flag to check if there are planes or not
 int num_planes;                 // number of cargo planes
+int number_of_committees;       // number of committees
 int main(int argc, char **argv)
 {
     // check the number of arguments
@@ -19,10 +22,16 @@ int main(int argc, char **argv)
     }
 
     num_planes = atoi(argv[1]);
+    number_of_committees = atoi(argv[2]);
+
     srand((unsigned)getpid()); // seed for the random function with the ID of the current process
 
     shmptr_plane = createSharedMemory(SHKEY_PLANES, num_planes * sizeof(struct Plane), "plane.c");
     planes = (struct Plane *)shmptr_plane;
+
+    // open the shared memory of all struct of the collecting committees
+    shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, number_of_committees * sizeof(struct Collecting_Committee), "collecting_committe.c");
+    collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
 
     // every specific time kill a random plane
     while (1)

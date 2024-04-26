@@ -37,20 +37,20 @@ int main(int argc, char **argv)
 
     // get the information of the plane
     get_information_plane(argv);
-    createContainers();
-    printContainers();
 
     // open the ground message queue
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "plane.c");
-
+    printf("The plane %d goes to bring containers\n", plane->plane_num);
+    createContainers();
+    printContainers();
     // write the conainers to the ground message queue,after dropping time of the container
     while (1)
     { // Firslty,the plane does not reached yet (it goes to bring containers)
-        if (plane->is_refilling)
+        /*if (plane->is_refilling)
         {
-            printf("The plane %d goes to bring containers\n", plane->plane_num);
+
             sleep(time_refill_plane);
-        }
+        }*/
         plane->is_refilling = 0;
 
         // start drop the containers
@@ -93,8 +93,8 @@ int main(int argc, char **argv)
                 perror("Plane:msgsnd");
                 return 3;
             }
-            /*printf("Container %d of plane %d with bags=%d reach the ground MSG\n", plane->containers[i].conatiner_num, plane->plane_num, plane->containers[i].capacity_of_bags);
-            fflush(stdout);*/
+            printf("Container %d of plane %d with bags=%d wrritten in ground meessage queue\n", plane->containers[i].conatiner_num, plane->plane_num, plane->containers[i].capacity_of_bags);
+            fflush(stdout);
         }
         plane->is_refilling = 1;
     }
@@ -152,7 +152,7 @@ void get_information_plane(char **argv)
 
     plane->is_refilling = 1;
     plane->pid = getpid();
-    plane->plane_num = atoi(argv[1]);
+    plane->plane_num = plane_num;
 
     split_string(argv[2], range_num_containers);
     split_string(argv[3], range_num_bags);

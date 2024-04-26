@@ -6,17 +6,19 @@ void signal_handler_MARTYRED(int sig);
 void signal_handler_SIGALRM(int sig);
 void fillEnergyWorkers();
 int apply_trip_time();
+void get_information_committee(char **argv, int committee_num);
 //***********************************************************************************
 
 int msg_ground_id;
 int msg_safe_area_id;
-
+char *shmptr_collecting_committees;
 int period_trip_committee[2];
 int range_energy_workers[2];
 int periodic_energy_reduction;
 int range_energy_loss[2];
 int is_alarmed;
 int is_worker_dead;
+int number_of_committees;
 Container container;
 Collecting_Committee collecting_committee;
 
@@ -24,35 +26,33 @@ int main(int argc, char **argv)
 
 {
     // check the number of arguments
-    if (argc < 7)
+    if (argc < 8)
     {
-        perror("The user shouldn pass an argument like:committee_num, number_of_workers, period_trip_committee, range_energy_workers, period_energy_reduction, energy_loss_range.\n");
+        perror("The user shouldn pass an argument like:committee_num, number_of_workers, period_trip_committee, range_energy_workers, period_energy_reduction, energy_loss_range,number_of_committees\n");
         exit(-1);
     }
 
     srand((unsigned)getpid()); // seed for the random function with the ID of the current process
 
     // get information from the arguments
-    collecting_committee.committee_num = atoi(argv[1]);
-    collecting_committee.num_workers = atoi(argv[2]);
-    periodic_energy_reduction = atoi(argv[5]);
-    split_string(argv[3], period_trip_committee);
-    split_string(argv[4], range_energy_workers);
-    split_string(argv[6], range_energy_loss);
-
-    collecting_committee.is_tripping = 0;
-    collecting_committee.trip_time = get_random_number(period_trip_committee[0], period_trip_committee[1]);
+    int committee_num = atoi(argv[1]);
+    number_of_committees = atoi(argv[7]);
 
     // open the ground message queues
     msg_ground_id = createMessageQueue(MSGQKEY_GROUND, "collecting_committe.c");
     msg_safe_area_id = createMessageQueue(MSGQKEY_SAFE_AREA, "collecting_committe.c");
+    //  open the shared memory of the committees
+    //  Create a shared memory for all struct of the collecting committees
+    // shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, number_of_committees * sizeof(struct Collecting_Committee), "collecting_committe.c");
+    // collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
+
+    get_information_committee(argv, committee_num);
 
     fillEnergyWorkers();
 
-    alarm(periodic_energy_reduction);
-
     // initialize the signal handlers
-    init_signals_handlers();
+    // init_signals_handlers();
+    // alarm(periodic_energy_reduction);
 
     while (1)
     { // the committee collect the wheat flour from the ground every specified time
@@ -93,7 +93,7 @@ int main(int argc, char **argv)
         fflush(stdout);
         apply_trip_time(); // time for going back to the ground
     }
-
+    printf("wtfffffffffffffffffffff\n");
     return 0;
 }
 
@@ -124,15 +124,15 @@ void signal_handler_SIGALRM(int sig)
 {
     printf("The alarm signal %d reached to the committee:%d then the energy of the workers will be reduced\n\n", sig, collecting_committee.committee_num);
     is_alarmed = 1;
-    for (int i = 0; i < collecting_committee.num_workers; i++)
+    /*for (int i = 0; i < collecting_committee->num_workers; i++)
     {
-        if (collecting_committee.workers[i].energy >= 5)
+        if (collecting_committee->workers[i].energy >= 5)
         {
-            collecting_committee.workers[i].energy -= get_random_number(range_energy_loss[0], range_energy_loss[1]);
-            printf("Worker %d in committee %d has energy %d\n", collecting_committee.workers[i].worker_num, collecting_committee.committee_num, collecting_committee.workers[i].energy);
+            collecting_committee->workers[i].energy -= get_random_number(range_energy_loss[0], range_energy_loss[1]);
+            printf("Worker %d in committee %d has energy %d\n", collecting_committee->workers[i].worker_num, collecting_committee->committee_num, collecting_committee->workers[i].energy);
         }
     }
-    alarm(periodic_energy_reduction);
+    alarm(periodic_energy_reduction);*/
 }
 
 void fillEnergyWorkers()
@@ -148,7 +148,6 @@ void fillEnergyWorkers()
 
 int apply_trip_time()
 {
-
     int pause_time = sleep(collecting_committee.trip_time);
 
     while (pause_time != 0)
@@ -165,4 +164,23 @@ int apply_trip_time()
         pause_time = sleep(pause_time);
     }
     return 1;
+}
+
+void get_information_committee(char **argv, int committee_num)
+{
+    // get the information of the committee from the arguments
+    // collecting_committee = &collecting_committees[committee_num - 1];
+    collecting_committee.committee_num = committee_num;
+    collecting_committee.num_workers = atoi(argv[2]);
+
+    periodic_energy_reduction = atoi(argv[5]);
+    split_string(argv[3], period_trip_committee);
+    split_string(argv[4], range_energy_workers);
+    split_string(argv[6], range_energy_loss);
+
+    collecting_committee.is_tripping = 0;
+    collecting_committee.trip_time = get_random_number(period_trip_committee[0], period_trip_committee[1]);
+
+    printf("Committee %d has %d workers and the trip time is %d\n", collecting_committee.committee_num, collecting_committee.num_workers, collecting_committee.trip_time);
+    fflush(stdout);
 }

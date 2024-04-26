@@ -25,6 +25,7 @@ pid_t arr_pids_occupation[MAX_NUM_OCUPATIONS];
 pid_t arr_pids_planes[MAX_NUM_PLANES];
 pid_t arr_pids_collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
 Plane planes[MAX_NUM_PLANES];
+Collecting_Committee collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
 int size = 0;
 int i = 0;
 int pid = 0;
@@ -40,10 +41,12 @@ int msg_ground;
 int msg_safe_area;
 int num_occupation = 1;
 char *shmptr_plane;
+char *shmptr_collecting_committees;
 char str_num_cargo_planes[10];
 char plane_num[10];
 char number_of_workers[10];
 char committee_num[10];
+char number_of_committees[10];
 int main(int argc, char **argv)
 {
     char *file_name = (char *)malloc(50 * sizeof(char));
@@ -72,6 +75,7 @@ int main(int argc, char **argv)
     // create the workers
     // 1- collecting relief workers
     createCollectingCommittees();
+
     while (1)
     {
         pause();
@@ -151,8 +155,9 @@ void createOccupation()
         case 0: // I'm occupation
 
             sprintf(str_num_cargo_planes, "%d", num_cargo_planes);
+            sprintf(number_of_committees, "%d", num_collecting_relief_committees);
 
-            execlp("./occupation", "occupation", str_num_cargo_planes, NULL);
+            execlp("./occupation", "occupation", str_num_cargo_planes, number_of_committees, NULL);
             perror("Error:Execute occupation Failed.\n");
             exit(1);
             break;
@@ -183,9 +188,10 @@ void createCollectingCommittees()
             sprintf(str_range_energy_workers, "%d %d", range_energy_of_workers[0], range_energy_of_workers[1]);
             sprintf(str_period_energy_reduction, "%d", period_energy_reduction);
             sprintf(str_energy_loss, "%d %d", energy_loss_range[0], energy_loss_range[1]);
+            sprintf(number_of_committees, "%d", num_collecting_relief_committees);
             sprintf(committee_num, "%d", i + 1);
 
-            execlp("./collecting_committe", "collecting_committe", committee_num, number_of_workers, str_period_trip_committees, str_range_energy_workers, str_period_energy_reduction, str_energy_loss, NULL);
+            execlp("./collecting_committe", "collecting_committe", committee_num, number_of_workers, str_period_trip_committees, str_range_energy_workers, str_period_energy_reduction, str_energy_loss, number_of_committees, NULL);
             perror("Error:Execute committee Failed.\n");
             exit(1);
             break;
@@ -206,6 +212,9 @@ void initializeIPCResources()
     shmptr_plane = createSharedMemory(SHKEY_PLANES, num_cargo_planes * sizeof(struct Plane), "parent.c");
     memcpy(shmptr_plane, planes, num_cargo_planes * sizeof(struct Plane)); // Copy the struct of all planes to the shared memory
 
+    // Create a shared memory for all struct of the collecting committees
+    shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), "parent.c");
+    memcpy(shmptr_collecting_committees, collecting_committees, num_collecting_relief_committees * sizeof(struct Collecting_Committee)); // Copy the struct of all planes to the shared memory
     // Create a massage queue for the ground
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "parent.c");
 

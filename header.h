@@ -39,8 +39,9 @@
 #define MSGQKEY_GROUND 1111    // key for message queue for the ground
 #define MSGQKEY_SAFE_AREA 2222 // key for message queue the safe storage area
 
-#define SHKEY_FAMILIES 3333 // key for shared memory pid of the families
-#define SHKEY_PLANES 4444   // key for shared memory pid of the planes
+#define SHKEY_FAMILIES 3333              // key for shared memory pid of the families
+#define SHKEY_PLANES 4444                // key for shared memory pid of the planes
+#define SHKEY_COLLECTION_COMMITTEES 5555 // key for shared memory pid of the collection committees
 
 struct String
 {

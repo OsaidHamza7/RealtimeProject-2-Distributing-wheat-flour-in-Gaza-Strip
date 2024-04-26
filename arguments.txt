@@ -2,7 +2,7 @@ num_cargo_planes 1
 range_num_wheat_flour_containers 2,7
 range_num_bages 5,10
 period_dropping_wheat_flour_container 5,10
-period_refill_planes 10,20
+period_refill_planes 5,10
 period_trip_collecting_committees 5,10
 range_energy_of_workers 60,100
 period_energy_reduction 10
