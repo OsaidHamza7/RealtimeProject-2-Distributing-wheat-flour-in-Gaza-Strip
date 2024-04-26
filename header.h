@@ -28,10 +28,13 @@
 
 #define MAX_LINES 100
 #define MAX_LINE_LENGTH 255
+
 #define MAX_NUM_CONTINARS 20
 #define MAX_NUM_PLANES 100
 #define MAX_NUM_OCUPATIONS 10
+
 #define MAX_NUM_WORKERS_IN_COMMITTEE 10
+#define MAX_NUM_COLLECTION_COMMITTEES 100
 
 #define MSGQKEY_GROUND 1111    // key for message queue for the ground
 #define MSGQKEY_SAFE_AREA 2222 // key for message queue the safe storage area
@@ -54,7 +57,7 @@ typedef struct Container Container;
 
 struct Plane
 {
-    int pid;
+    pid_t pid;
     int plane_num;
     int num_containers;
     Container containers[MAX_NUM_CONTINARS];
@@ -62,22 +65,21 @@ struct Plane
 };
 typedef struct Plane Plane;
 
-
-
 struct Worker
 {
     int worker_num;
     int energy;
-    int trip_time;
-    int is_tripping;
 };
 typedef struct Worker Worker;
 
 struct Collecting_Committee
 {
+    pid_t pid;
     int committee_num;
     int num_workers;
     Worker workers[MAX_NUM_WORKERS_IN_COMMITTEE];
+    int trip_time;
+    int is_tripping;
 };
 typedef struct Collecting_Committee Collecting_Committee;
 // ====================================================================================
@@ -86,9 +88,13 @@ extern int range_num_wheat_flour_containers[2];
 extern int range_num_bages[2];
 extern int period_dropping_wheat_flour_container[2];
 extern int period_refill_planes[2];
+extern int period_trip_collecting_committees[2];
+extern int range_energy_of_workers[2];
+extern int period_energy_reduction;
+extern int energy_loss_range[2];
 extern int num_families;
 extern int num_collecting_relief_committees;
-extern int num_workers_in_collecting_committe;
+extern int num_workers_in_collecting_committee;
 extern int num_splitting_relief_workers;
 extern int num_distributing_relief_workers;
 extern int range_bags_per_distrib_worker[2];

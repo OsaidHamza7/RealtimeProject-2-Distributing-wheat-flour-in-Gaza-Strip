@@ -5,9 +5,13 @@ int range_num_wheat_flour_containers[2] = {5, 10};
 int range_num_bages[2] = {5, 10};
 int period_dropping_wheat_flour_container[2] = {2, 10};
 int period_refill_planes[2] = {10, 20};
+int period_trip_collecting_committees[2] = {2, 7};
+int range_energy_of_workers[2] = {60, 100};
+int period_energy_reduction = 10;
+int energy_loss_range[2] = {5, 10};
 int num_families = 20;
 int num_collecting_relief_committees = 10;
-int num_workers_in_collecting_committe = 5;
+int num_workers_in_collecting_committee = 5;
 int num_splitting_relief_workers = 10;
 int num_distributing_relief_workers = 10;
 int range_bags_per_distrib_worker[2] = {1, 10};
@@ -127,6 +131,21 @@ void readFromFile(const char *filename, int *array)
         {
             range_bags_per_distrib_worker[0] = min;
             range_bags_per_distrib_worker[1] = max;
+        }
+        else if (strcmp(varName, "period_trip_collecting_committees") == 0)
+        {
+            period_trip_collecting_committees[0] = min;
+            period_trip_collecting_committees[1] = max;
+        }
+        else if (strcmp(varName, "range_energy_of_workers") == 0)
+        {
+            range_energy_of_workers[0] = min;
+            range_energy_of_workers[1] = max;
+        }
+        else if (strcmp(varName, "energy_loss_range") == 0)
+        {
+            energy_loss_range[0] = min;
+            energy_loss_range[1] = max;
         }
     }
     fclose(file); // closing the file
