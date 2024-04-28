@@ -59,7 +59,7 @@ int main(int argc, char **argv)
 
     while (1)
     { // the committee collect the wheat flour from the ground every specified time
-        printf("Committee %d is waiting for a container from the ground\n", collecting_committee->committee_num);
+        printf("Committee %d with %d workers is waiting for a container from the ground\n", collecting_committee->committee_num, collecting_committee->num_workers);
         collecting_committee->is_tripping = 0;
         while (1)
         {
@@ -84,9 +84,12 @@ int main(int argc, char **argv)
         printf("Committee %d collect container %d with %d bags and going to the safe area\n", collecting_committee->committee_num, container.conatiner_num, container.capacity_of_bags);
         fflush(stdout);
         collecting_committee->is_tripping = 1;
-        printf("hahahahahahahahahhahahahahah\n");
         apply_trip_time(); // time for going from ground to the safe storage area
-
+        if (collecting_committee->num_workers == 0)
+        {
+            printf("Committee %d has no workers\n", collecting_committee->committee_num);
+            return 0;
+        }
         // send the container to the safe area
         if (msgsnd(msg_safe_area_id, &container.capacity_of_bags, sizeof(container), 0) == -1)
         {
