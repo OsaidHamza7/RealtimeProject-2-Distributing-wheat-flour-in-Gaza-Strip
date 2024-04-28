@@ -40,17 +40,17 @@ int main(int argc, char **argv)
 
     // open the ground message queue
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "plane.c");
-    printf("The plane %d goes to bring containers\n", plane->plane_num);
-    createContainers();
-    printContainers();
+
     // write the conainers to the ground message queue,after dropping time of the container
     while (1)
     { // Firslty,the plane does not reached yet (it goes to bring containers)
-        /*if (plane->is_refilling)
+        if (plane->is_refilling)
         {
-
+            printf("The plane %d goes to bring containers\n", plane->plane_num);
             sleep(time_refill_plane);
-        }*/
+            createContainers();
+            printContainers();
+        }
         plane->is_refilling = 0;
 
         // start drop the containers
