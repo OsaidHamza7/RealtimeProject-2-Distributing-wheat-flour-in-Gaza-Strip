@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     // Create a shared memory for splitted bages
     shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(int), "splitting_worker.c");
 
-    // sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 2, "parent.c");
+    sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, "splitting_worker.c");
 
     while (1)
     { // the splitting worker is waiting for a container from the safe storage area
@@ -49,12 +49,16 @@ int main(int argc, char **argv)
             }
         }
 
-        printf("Splitting worker %d received a container,then will write it to the shared memory.\n", splitting_worker_num);
+        printf("Splitting worker %d received a container %d with bags %d,then he splits it into a number of bags(1k).\n", container.conatiner_num, container.capacity_of_bags, splitting_worker_num);
         // write the number of splitted bages to the shared memory
-        // acquireSem(sem_splitted_bags, 0, "splitting_worker.c");
+
+        sleep(3); // Time taken to split the container into the bags
+
+        acquireSem(sem_splitted_bags, 0, "splitting_worker.c");
         *shmptr_splitted_bages += container.capacity_of_bags;
-        // releaseSem(sem_splitted_bags, 0, "splitting_worker.c");
-        printf("Splitting worker %d wrote the number of splitted bages to the shared memory and value=%d.\n", splitting_worker_num, *shmptr_splitted_bages);
+        releaseSem(sem_splitted_bags, 0, "splitting_worker.c");
+
+        printf("Splitting worker %d wrote splitted bages to the shared memory,value=%d.\n", splitting_worker_num, *shmptr_splitted_bages);
     }
     return 0;
 }
