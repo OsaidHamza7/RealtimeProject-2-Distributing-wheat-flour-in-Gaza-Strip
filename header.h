@@ -28,21 +28,26 @@
 
 #define MAX_LINES 100
 #define MAX_LINE_LENGTH 255
+#define NUM_SEMAPHORES 2
 
+#define MAX_NUM_WORKERS 100
+#define MAX_NUM_FAMILIES 100
 #define MAX_NUM_CONTINARS 20
 #define MAX_NUM_PLANES 100
 #define MAX_NUM_OCUPATIONS 10
 
 #define MAX_NUM_WORKERS_IN_COMMITTEE 10
 #define MAX_NUM_COLLECTION_COMMITTEES 100
-
+#define MAX_NUM_SPLITTING_WORKERS 100
 #define MSGQKEY_GROUND 1111    // key for message queue for the ground
 #define MSGQKEY_SAFE_AREA 2222 // key for message queue the safe storage area
 
 #define SHKEY_FAMILIES 3333              // key for shared memory pid of the families
 #define SHKEY_PLANES 4444                // key for shared memory pid of the planes
 #define SHKEY_COLLECTION_COMMITTEES 5555 // key for shared memory pid of the collection committees
+#define SHKEY_SPLITTING_WORKERS 6666     // key for shared memory pid of the splitting workers
 
+#define SEMKEY_SPLITTED_BAGS 7777 // key for semaphore for the planes
 struct String
 {
     char str[MAX_LINE_LENGTH];

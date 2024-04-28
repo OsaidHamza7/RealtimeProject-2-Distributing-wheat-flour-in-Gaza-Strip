@@ -6,7 +6,6 @@
   Maisam Alaa
   Ansam Rihan
 */
-
 //***********************************************************************************
 void checkArguments(int argc, char **argv, char *file_name);
 void signal_handler_SIGALRM(int sig);
@@ -18,12 +17,14 @@ void initializeIPCResources();
 void exitProgram(int signum);
 void createOccupation();
 void createCollectingCommittees();
+void createSplittingWorkers();
 //***********************************************************************************
 int arr_of_arguments[MAX_LINES];
 int is_alarmed = 0;
 pid_t arr_pids_occupation[MAX_NUM_OCUPATIONS];
 pid_t arr_pids_planes[MAX_NUM_PLANES];
 pid_t arr_pids_collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
+pid_t arr_pids_splitting_workers[MAX_NUM_SPLITTING_WORKERS];
 Plane planes[MAX_NUM_PLANES];
 Collecting_Committee collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
 int size = 0;
@@ -39,13 +40,16 @@ char str_period_energy_reduction[10];
 char str_energy_loss[10];
 int msg_ground;
 int msg_safe_area;
+int sem_splitted_bags;
 int num_occupation = 1;
 char *shmptr_plane;
 char *shmptr_collecting_committees;
+char *shmptr_splitted_bages;
 char str_num_cargo_planes[10];
 char plane_num[10];
 char number_of_workers[10];
 char committee_num[10];
+char splitting_worker_num[10];
 char number_of_committees[10];
 int main(int argc, char **argv)
 {
@@ -69,13 +73,12 @@ int main(int argc, char **argv)
 
     init_signals_handlers();
     alarm(simulation_threshold_time);
-
     createPlanes();
     createOccupation();
     // create the workers
     // 1- collecting relief workers
     createCollectingCommittees();
-
+    createSplittingWorkers();
     while (1)
     {
         pause();
@@ -91,6 +94,11 @@ int main(int argc, char **argv)
 void init_signals_handlers()
 {
     if (sigset(SIGALRM, exitProgram) == -1)
+    { // set the signal handler for SIGALRM
+        perror("Signal Error\n");
+        exit(-1);
+    }
+    if (sigset(SIGINT, exitProgram) == -1)
     { // set the signal handler for SIGALRM
         perror("Signal Error\n");
         exit(-1);
@@ -203,6 +211,37 @@ void createCollectingCommittees()
     }
     printf("*******************************************************************************\n");
 }
+
+// created the workers
+void createSplittingWorkers()
+{
+    printf("*******************************************************************************\n");
+    for (i = 0; i < num_splitting_relief_workers; i++)
+    {
+        switch (pid = fork())
+        {
+        case -1: // Fork Failed
+            perror("Error:Fork Splitting Committee Failed.\n");
+            exit(1);
+            break;
+
+        case 0: // I'm splitting worker
+
+            sprintf(splitting_worker_num, "%d", i + 1);
+
+            execlp("./splitting_worker", "splitting_worker", splitting_worker_num, NULL);
+            perror("Error:Execute spltting worker Failed.\n");
+            exit(1);
+            break;
+
+        default: // I'm parent
+            arr_pids_splitting_workers[i] = pid;
+            break;
+        }
+    }
+    printf("*******************************************************************************\n");
+}
+
 /*
 function to initialize IPCs resources (shared memory, semaphores, message queues)
 */
@@ -215,6 +254,12 @@ void initializeIPCResources()
     // Create a shared memory for all struct of the collecting committees
     shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), "parent.c");
     memcpy(shmptr_collecting_committees, collecting_committees, num_collecting_relief_committees * sizeof(struct Collecting_Committee)); // Copy the struct of all planes to the shared memory
+    int x = 0;
+    // Create a shared memory for splitted bages
+    shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(int), "parent.c");
+    memcpy(shmptr_splitted_bages, &x, sizeof(int) * 2); // Copy the struct of all planes to the shared memory
+    //sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, "parent.c");
+
     // Create a massage queue for the ground
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "parent.c");
 
@@ -311,7 +356,10 @@ void exitProgram(int signum)
     //  delete the message queue for the ground
     deleteMessageQueue(msg_ground);
     deleteMessageQueue(msg_safe_area);
-
+    //deleteSemaphore(sem_splitted_bags);
+    deleteSharedMemory(SHKEY_PLANES, num_cargo_planes * sizeof(struct Plane), shmptr_plane);
+    deleteSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), shmptr_collecting_committees);
+    deleteSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(int), shmptr_splitted_bages);
     printf("IPC resources cleaned up successfully\n");
     printf("Exiting...\n");
     fflush(stdout);

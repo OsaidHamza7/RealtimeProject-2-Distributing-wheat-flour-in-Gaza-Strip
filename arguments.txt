@@ -10,7 +10,7 @@ energy_loss_range 5,10
 num_families 20
 num_collecting_relief_committees 1
 num_workers_in_collecting_committee 5
-num_splitting_relief_workers 10
+num_splitting_relief_workers 1
 num_distributing_relief_workers 10
 range_bags_per_distrib_worker 1,10
 distrib_relief_worker_threshold 5
