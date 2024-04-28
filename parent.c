@@ -78,6 +78,7 @@ int main(int argc, char **argv)
     // create the workers
     // 1- collecting relief workers
     createCollectingCommittees();
+    // 2- splitting relief workers
     createSplittingWorkers();
     while (1)
     {
@@ -254,11 +255,12 @@ void initializeIPCResources()
     // Create a shared memory for all struct of the collecting committees
     shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), "parent.c");
     memcpy(shmptr_collecting_committees, collecting_committees, num_collecting_relief_committees * sizeof(struct Collecting_Committee)); // Copy the struct of all planes to the shared memory
+
     int x = 0;
     // Create a shared memory for splitted bages
     shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(int), "parent.c");
     memcpy(shmptr_splitted_bages, &x, sizeof(int) * 2); // Copy the struct of all planes to the shared memory
-    //sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, "parent.c");
+    sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, "parent.c");
 
     // Create a massage queue for the ground
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "parent.c");
@@ -354,12 +356,16 @@ void exitProgram(int signum)
     fflush(stdout);
     // sleep(5);
     //  delete the message queue for the ground
+
     deleteMessageQueue(msg_ground);
     deleteMessageQueue(msg_safe_area);
-    //deleteSemaphore(sem_splitted_bags);
+
+    deleteSemaphore(sem_splitted_bags);
+
     deleteSharedMemory(SHKEY_PLANES, num_cargo_planes * sizeof(struct Plane), shmptr_plane);
     deleteSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), shmptr_collecting_committees);
     deleteSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(int), shmptr_splitted_bages);
+
     printf("IPC resources cleaned up successfully\n");
     printf("Exiting...\n");
     fflush(stdout);
