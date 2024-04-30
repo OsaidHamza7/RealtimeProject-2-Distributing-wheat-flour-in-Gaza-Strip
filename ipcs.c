@@ -38,7 +38,7 @@ char *createSharedMemory(int key, int size, char *src)
  * and initialize it with ones if it doesn't exist
  * or access it if it already exists
  */
-int createSemaphore(int key, int num, char *src)
+int createSemaphore(int key, int num, int init_val, char *src)
 {
 
     int semid = semget(key, num, 0666);
@@ -60,7 +60,8 @@ int createSemaphore(int key, int num, char *src)
         // Initialize the semaphore with ones
         for (int i = 0; i < num; i++)
         {
-            start_val[i] = 1;
+
+            start_val[i] = init_val;
         }
 
         union semun arg;

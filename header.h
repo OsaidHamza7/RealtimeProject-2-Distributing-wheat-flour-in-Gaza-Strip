@@ -35,6 +35,7 @@
 #define MAX_NUM_CONTINARS 20
 #define MAX_NUM_PLANES 100
 #define MAX_NUM_OCUPATIONS 10
+#define MAX_NUM_DISTRIBUTING_WORKERS 100
 
 #define MAX_NUM_WORKERS_IN_COMMITTEE 10
 #define MAX_NUM_COLLECTION_COMMITTEES 100
@@ -46,8 +47,9 @@
 #define SHKEY_PLANES 4444                // key for shared memory pid of the planes
 #define SHKEY_COLLECTION_COMMITTEES 5555 // key for shared memory pid of the collection committees
 #define SHKEY_SPLITTING_WORKERS 6666     // key for shared memory pid of the splitting workers
-
-#define SEMKEY_SPLITTED_BAGS 7777 // key for semaphore for the planes
+#define SHKEY_DISTRIBUTING_WORKERS 5566  // key for shared memory pid of the distributing workers
+#define SEMKEY_SPLITTED_BAGS 7777        // key for semaphore for the planes
+#define SEMKEY_SPACES_AVAILABLE 8888     // key for semaphore for the spaces available in the safe storage area
 struct String
 {
     char str[MAX_LINE_LENGTH];
@@ -77,6 +79,16 @@ struct Worker
     int energy;
 };
 typedef struct Worker Worker;
+
+struct Distributing_Worker
+{
+    int worker_num;
+    int energy;
+    int num_bags;
+    int trip_time;
+    int is_tripping;
+};
+typedef struct Distributing_Worker Distributing_Worker;
 
 struct Collecting_Committee
 {

@@ -21,7 +21,7 @@ and structs related to IPCs used in the program.
 #include <pthread.h>
 
 char *createSharedMemory(int key, int size, char *src);
-int createSemaphore(int key, int num, char *src);
+int createSemaphore(int key, int num, int init_val, char *src);
 void printSharedMemory(char *shmptr, char *src);
 
 void deleteSemaphore(int semid);

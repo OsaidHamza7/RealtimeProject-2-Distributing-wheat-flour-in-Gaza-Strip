@@ -3,9 +3,9 @@ CFLAGS = -g -Wall
 ARGS= arguments.txt
 UILIBS = -lglut -lGLU -lGL -lm  -lrt
 LIBS = -lpthread
-NAMES = parent plane occupation collecting_committe splitting_worker
+NAMES = parent plane occupation collecting_committe splitting_worker distributing_worker
 
-all: parent plane occupation collecting_committe splitting_worker
+all: parent plane occupation collecting_committe splitting_worker distributing_worker
 
 parent: parent.c functions.c ipcs.c 
 	$(CC) $(CFLAGS) -o parent parent.c functions.c ipcs.c  $(LIBS)
@@ -18,7 +18,10 @@ collecting_committe: collecting_committe.c functions.c ipcs.c
 
 splitting_worker: splitting_worker.c functions.c ipcs.c 
 	$(CC) $(CFLAGS) -o splitting_worker splitting_worker.c functions.c ipcs.c $(LIBS)	
-	
+
+distributing_worker: distributing_worker.c functions.c ipcs.c 
+	$(CC) $(CFLAGS) -o distributing_worker distributing_worker.c functions.c ipcs.c $(LIBS)
+
 occupation:	occupation.c functions.c ipcs.c 
 	$(CC) $(CFLAGS) -o occupation occupation.c functions.c ipcs.c $(LIBS)
 
