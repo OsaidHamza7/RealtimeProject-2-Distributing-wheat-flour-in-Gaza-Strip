@@ -18,15 +18,21 @@ void exitProgram(int signum);
 void createOccupation();
 void createCollectingCommittees();
 void createSplittingWorkers();
+void createDistributingWorkers();
 //***********************************************************************************
 int arr_of_arguments[MAX_LINES];
 int is_alarmed = 0;
+
 pid_t arr_pids_occupation[MAX_NUM_OCUPATIONS];
 pid_t arr_pids_planes[MAX_NUM_PLANES];
 pid_t arr_pids_collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
 pid_t arr_pids_splitting_workers[MAX_NUM_SPLITTING_WORKERS];
+pid_t arr_pids_distributing_workers[MAX_NUM_DISTRIBUTING_WORKERS];
+
 Plane planes[MAX_NUM_PLANES];
 Collecting_Committee collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
+Distributing_Worker distributing_workers[MAX_NUM_DISTRIBUTING_WORKERS];
+
 int size = 0;
 int i = 0;
 int pid = 0;
@@ -38,19 +44,41 @@ char str_period_trip_committees[10];
 char str_range_energy_workers[10];
 char str_period_energy_reduction[10];
 char str_energy_loss[10];
+char range_num_bags_distrib_worker[10];
 int msg_ground;
 int msg_safe_area;
 int sem_splitted_bags;
+int sem_spaces_available;
 int num_occupation = 1;
 char *shmptr_plane;
 char *shmptr_collecting_committees;
 char *shmptr_splitted_bages;
+char *shmptr_distributing_workers;
 char str_num_cargo_planes[10];
 char plane_num[10];
-char number_of_workers[10];
 char committee_num[10];
 char splitting_worker_num[10];
+char distributing_worker_num[10];
 char number_of_committees[10];
+char number_of_workers[10];
+
+void createMessages()
+{
+
+    Container x;
+    x.capacity_of_bags = 3;
+    for (int i = 0; i < 5; i++)
+    {
+        x.conatiner_num = i + 1;
+
+        if (msgsnd(msg_safe_area, &x, sizeof(x), 0) == -1)
+        {
+            perror("p tryarent:msgsnd");
+            return;
+        }
+        sleep(1);
+    }
+}
 int main(int argc, char **argv)
 {
     char *file_name = (char *)malloc(50 * sizeof(char));
@@ -73,13 +101,15 @@ int main(int argc, char **argv)
 
     init_signals_handlers();
     alarm(simulation_threshold_time);
-    createPlanes();
-    createOccupation();
-    // create the workers
-    // 1- collecting relief workers
-    createCollectingCommittees();
-    // 2- splitting relief workers
+    // createPlanes();
+    // createOccupation();
+    //  create the workers
+    //  1- collecting relief workers
+    // createCollectingCommittees();
+    //  2- splitting relief workers
+    createMessages();
     createSplittingWorkers();
+    createDistributingWorkers();
     while (1)
     {
         pause();
@@ -243,6 +273,41 @@ void createSplittingWorkers()
     printf("*******************************************************************************\n");
 }
 
+// created the workers
+void createDistributingWorkers()
+{
+    printf("*******************************************************************************\n");
+    for (i = 0; i < num_distributing_relief_workers; i++)
+    {
+        switch (pid = fork())
+        {
+        case -1: // Fork Failed
+            perror("Error:Fork Distributing Worker Failed.\n");
+            exit(1);
+            break;
+
+        case 0: // I'm splitting worker
+            sprintf(str_period_trip_committees, "%d %d", period_trip_collecting_committees[0], period_trip_collecting_committees[1]);
+            sprintf(number_of_workers, "%d", num_distributing_relief_workers);
+            sprintf(str_range_energy_workers, "%d %d", range_energy_of_workers[0], range_energy_of_workers[1]);
+            sprintf(str_period_energy_reduction, "%d", period_energy_reduction);
+            sprintf(str_energy_loss, "%d %d", energy_loss_range[0], energy_loss_range[1]);
+            sprintf(distributing_worker_num, "%d", i + 1);
+            sprintf(range_num_bags_distrib_worker, "%d %d", range_bags_per_distrib_worker[0], range_bags_per_distrib_worker[1]);
+
+            execlp("./distributing_worker", "distributing_worker", distributing_worker_num, range_num_bags_distrib_worker, str_period_trip_committees, str_range_energy_workers, str_period_energy_reduction, str_energy_loss, number_of_workers, NULL);
+            perror("Error:Execute  Distributing worker Failed.\n");
+            exit(1);
+            break;
+
+        default: // I'm parent
+            arr_pids_distributing_workers[i] = pid;
+            break;
+        }
+    }
+    printf("*******************************************************************************\n");
+}
+
 /*
 function to initialize IPCs resources (shared memory, semaphores, message queues)
 */
@@ -258,9 +323,15 @@ void initializeIPCResources()
 
     int x = 0;
     // Create a shared memory for splitted bages
-    shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(int), "parent.c");
+    shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(Container), "parent.c");
     memcpy(shmptr_splitted_bages, &x, sizeof(int) * 2); // Copy the struct of all planes to the shared memory
-    sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, "parent.c");
+
+    shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, num_distributing_relief_workers * sizeof(struct Distributing_Worker), "parent.c");
+    memcpy(shmptr_distributing_workers, distributing_workers, num_distributing_relief_workers * sizeof(struct Distributing_Worker)); // Copy the struct of all planes to the shared memory
+
+    // initial value is zero,there is no bags
+    sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "parent.c");
+    sem_spaces_available = createSemaphore(SEMKEY_SPACES_AVAILABLE, 1, 1, "parent.c");
 
     // Create a massage queue for the ground
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "parent.c");
@@ -342,13 +413,16 @@ void exitProgram(int signum)
     fflush(stdout);
 
     // kill all the planes processes
-    killAllProcesses(arr_pids_planes, num_cargo_planes);
+    // killAllProcesses(arr_pids_planes, num_cargo_planes);
 
     // kill all the ocupations processes
-    killAllProcesses(arr_pids_occupation, num_occupation);
+    // killAllProcesses(arr_pids_occupation, num_occupation);
 
     // kill all the collecting committees processes
-    killAllProcesses(arr_pids_collecting_committees, num_collecting_relief_committees);
+    // killAllProcesses(arr_pids_collecting_committees, num_collecting_relief_committees);
+
+    killAllProcesses(arr_pids_distributing_workers, num_distributing_relief_workers);
+    killAllProcesses(arr_pids_splitting_workers, num_splitting_relief_workers);
 
     printf("All child processes killed\n");
 
@@ -361,10 +435,11 @@ void exitProgram(int signum)
     deleteMessageQueue(msg_safe_area);
 
     deleteSemaphore(sem_splitted_bags);
-
+    deleteSemaphore(sem_spaces_available);
     deleteSharedMemory(SHKEY_PLANES, num_cargo_planes * sizeof(struct Plane), shmptr_plane);
     deleteSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), shmptr_collecting_committees);
-    deleteSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(int), shmptr_splitted_bages);
+    deleteSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(Container), shmptr_splitted_bages);
+    deleteSharedMemory(SHKEY_DISTRIBUTING_WORKERS, num_distributing_relief_workers * sizeof(struct Distributing_Worker), shmptr_distributing_workers);
 
     printf("IPC resources cleaned up successfully\n");
     printf("Exiting...\n");

@@ -149,7 +149,7 @@ void fillEnergyWorkers()
         // fill the array struct of workers in the committee
         collecting_committee->workers[i].worker_num = i + 1;
         collecting_committee->workers[i].energy = get_random_number(range_energy_workers[0], range_energy_workers[1]);
-        printf("Worker %d in committee %d has energy %d\n", collecting_committee->workers[i].worker_num, collecting_committee->committee_num, collecting_committee->workers[i].energy);
+        //printf("Worker %d in committee %d has energy %d\n", collecting_committee->workers[i].worker_num, collecting_committee->committee_num, collecting_committee->workers[i].energy);
     }
 }
 

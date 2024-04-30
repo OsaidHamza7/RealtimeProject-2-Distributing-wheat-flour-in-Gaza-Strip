@@ -49,7 +49,7 @@ int main(int argc, char **argv)
             printf("The plane %d goes to bring containers\n", plane->plane_num);
             sleep(time_refill_plane);
             createContainers();
-            printContainers();
+            //printContainers();
         }
         plane->is_refilling = 0;
 
