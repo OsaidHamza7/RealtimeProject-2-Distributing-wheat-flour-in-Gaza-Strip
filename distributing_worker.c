@@ -113,6 +113,8 @@ void signal_handler_MARTYRED(int sig)
 {
     printf("The signal %d reached,then the distributing worker %d is killed\n\n", sig, distributing_worker->worker_num);
     fflush(stdout);
+    distributing_worker->is_martyred = 1;
+    exit(0);
 }
 
 void signal_handler_SIGALRM(int sig)
@@ -172,11 +174,13 @@ void get_information_worker(char **argv, int distributing_worker_num)
 
     acquireSem(sem_distributing_workers, 0, "distributing_worker.c");
 
+    distributing_worker->pid = getpid();
     distributing_worker->worker_num = distributing_worker_num;
     distributing_worker->energy = get_random_number(range_energy_workers[0], range_energy_workers[1]);
     distributing_worker->num_bags = get_random_number(range_num_bags_distrib_worker[0], range_num_bags_distrib_worker[1]);
     distributing_worker->trip_time = get_random_number(period_trip_worker[0], period_trip_worker[1]);
     distributing_worker->is_tripping = 0;
+    distributing_worker->is_martyred = 0;
 
     releaseSem(sem_distributing_workers, 0, "distributing_worker.c");
 

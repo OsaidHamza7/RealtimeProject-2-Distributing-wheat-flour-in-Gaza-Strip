@@ -88,11 +88,13 @@ typedef struct Worker Worker;
 
 struct Distributing_Worker
 {
+    pid_t pid;
     int worker_num;
     int energy;
     int num_bags;
     int trip_time;
     int is_tripping;
+    int is_martyred;
 };
 typedef struct Distributing_Worker Distributing_Worker;
 

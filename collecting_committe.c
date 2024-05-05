@@ -42,7 +42,7 @@ int main(int argc, char **argv)
     int committee_num = atoi(argv[1]);
     number_of_committees = atoi(argv[7]);
 
-    // open the ground message queues
+    // open the message queues
     msg_ground_id = createMessageQueue(MSGQKEY_GROUND, "collecting_committe.c");
     msg_safe_area_id = createMessageQueue(MSGQKEY_SAFE_AREA, "collecting_committe.c");
 
@@ -202,6 +202,7 @@ void get_information_committee(char **argv, int committee_num)
 
     acquireSem(sem_collecting_committees, 0, "collecting_committe.c");
 
+    collecting_committee->pid = getpid();
     collecting_committee->committee_num = committee_num;
     collecting_committee->num_workers = atoi(argv[2]);
     collecting_committee->is_tripping = 0;

@@ -5,6 +5,9 @@ void getCurrentPlaneNumbers();
 void getCurrentCollectingCommitteesNumbers();
 void killPlanes();
 void killCommittees();
+void killDistributingWorkers();
+int getCurrentDistributingWorkers();
+int compareDistWorkersEnergy(const void *a, const void *b);
 //***********************************************************************************
 char *shmptr_plane;
 char *shmptr_collecting_committees;
@@ -18,35 +21,60 @@ int number_of_committees;                      // number of committees
 int current_collecting_committees_numbers[10]; // array of the current plane numbers
 int crrent_number_collecting_committees;       // Number of current planes
 int is_committees_here = 0;                    // flag to check if there are planes or not
+char *shmptr_distributing_workers;
+int num_distributing_workers;
+Distributing_Worker *distributing_workers;
+Distributing_Worker *current_distributing_workers; // array of the current plane numbers
+Distributing_Worker *sorted_current_distributing_workers;
+int crrent_number_distributing_workers; // Number of current planes
+int is_distributing_workers_here = 0;   // flag to check if there are planes or not
+int occupation_num;
 //***********************************************************************************.
 
 int main(int argc, char **argv)
 {
     // check the number of arguments
-    if (argc < 2)
+    if (argc < 5)
     {
-        perror("The user should pass the arguments like: num_cargo_planes\n");
+        perror("The user should pass the arguments like: num_cargo_planes,num_collecting_committes,num_distributing_workers,occupation_num\n");
         exit(-1);
     }
-
     num_planes = atoi(argv[1]);
     number_of_committees = atoi(argv[2]);
+    num_distributing_workers = atoi(argv[3]);
+    occupation_num = atoi(argv[4]);
 
     srand((unsigned)getpid()); // seed for the random function with the ID of the current process
 
-    shmptr_plane = createSharedMemory(SHKEY_PLANES, num_planes * sizeof(struct Plane), "plane.c");
+    shmptr_plane = createSharedMemory(SHKEY_PLANES, num_planes * sizeof(struct Plane), "occupation.c");
+    shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, number_of_committees * sizeof(struct Collecting_Committee), "occupation.c");
+    shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, num_distributing_workers * sizeof(struct Distributing_Worker), "occupation.c");
+
     planes = (struct Plane *)shmptr_plane;
+    collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
+    distributing_workers = (struct Distributing_Worker *)shmptr_distributing_workers;
 
-    // open the shared memory of all struct of the collecting committees
-    // shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, number_of_committees * sizeof(struct Collecting_Committee), "collecting_committe.c");
-    // collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
-
-    // every specific time kill a random plane
     while (1)
     {
         sleep(5);
-        // open the shared memory to get the array of struct of the planes
-        killPlanes();
+        switch (occupation_num)
+
+        {
+        case 1:
+            // killPlanes();
+            return 0;
+            break;
+        case 2:
+            // killCommittees();
+            return 0;
+            break;
+        case 3:
+            killDistributingWorkers();
+            break;
+
+        default:
+            break;
+        }
     }
     return 0;
 }
@@ -78,6 +106,29 @@ void killCommittees()
     int committee_num = current_planes_numbers[committee_indx];
     kill(collecting_committees[committee_num - 1].pid, SIGHUP); // kill the current container in the plane
     printf("Committee %d with pid=%d is shotted by the snipers\n", committee_num, collecting_committees[committee_num - 1].pid);
+
+    printf("=====================================================\n");
+}
+
+void killDistributingWorkers()
+{
+    // get the current distributing workers,then calculate the probability of the workers to be killed based on the energy
+    int dead_worker_num = getCurrentDistributingWorkers();
+    if (!is_distributing_workers_here)
+    {
+        printf("There are no distributing workers\n");
+        fflush(stdout);
+        return;
+    }
+    if (dead_worker_num == 0) // there is no killed workers
+    {
+        printf("There is no killed workers\n");
+        fflush(stdout);
+        return;
+    }
+
+    kill(distributing_workers[dead_worker_num - 1].pid, SIGHUP); // kill the current container in the plane
+    printf("Distributing worker %d with pid=%d is shotted by the snipers\n", dead_worker_num, distributing_workers[dead_worker_num - 1].pid);
 
     printf("=====================================================\n");
 }
@@ -116,4 +167,63 @@ void getCurrentCollectingCommitteesNumbers()
             is_committees_here = 1;
         }
     }
+}
+
+int getCurrentDistributingWorkers()
+{
+    is_distributing_workers_here = 0;
+    crrent_number_distributing_workers = 0;
+    current_distributing_workers = malloc(num_distributing_workers * sizeof(Distributing_Worker));
+
+    // get the current distributing workers in trip
+    for (int i = 0; i < num_distributing_workers; i++)
+    {
+        if (!distributing_workers[i].is_martyred && distributing_workers[i].is_tripping)
+        {
+            current_distributing_workers[crrent_number_distributing_workers] = distributing_workers[i];
+            crrent_number_distributing_workers++;
+            is_distributing_workers_here = 1;
+        }
+    }
+    // there are no distributing workers in trip
+    if (!is_distributing_workers_here)
+    {
+        free(current_distributing_workers);
+        return 0;
+    }
+
+    // Sort the current distributing workers based on the energy
+    sorted_current_distributing_workers = malloc(crrent_number_distributing_workers * sizeof(Distributing_Worker));
+    // Copying the data
+    memcpy(sorted_current_distributing_workers, current_distributing_workers, crrent_number_distributing_workers * sizeof(Distributing_Worker));
+
+    qsort(sorted_current_distributing_workers, crrent_number_distributing_workers, sizeof(Distributing_Worker), compareDistWorkersEnergy);
+
+    int dead_worker_num = 0;
+    // get current distributing workers and determine the probability of the worker to be killed
+    for (int i = 0; i < crrent_number_distributing_workers; i++)
+    {
+        printf("Distributin Worker %d has energy %d\n", sorted_current_distributing_workers[i].worker_num, sorted_current_distributing_workers[i].energy);
+
+        // Determine the probability of the worker to be killed
+        float probability_killed = (100 - sorted_current_distributing_workers[i].energy) / 100.0;
+        int worker_killed = ((float)rand() / (float)RAND_MAX) < probability_killed;
+        if (worker_killed)
+        {
+            dead_worker_num = sorted_current_distributing_workers[i].worker_num;
+            printf("Dead Worker number is %d\n", dead_worker_num);
+            break;
+        }
+    }
+
+    free(current_distributing_workers);
+    free(sorted_current_distributing_workers);
+    return dead_worker_num;
+}
+
+int compareDistWorkersEnergy(const void *a, const void *b)
+{
+    Distributing_Worker *distworkerA = (Distributing_Worker *)a;
+    Distributing_Worker *distworkerB = (Distributing_Worker *)b;
+    return distworkerA->energy - distworkerB->energy;
 }

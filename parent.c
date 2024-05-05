@@ -27,7 +27,7 @@ int x = 0;
 int size = 0;
 int i = 0;
 int pid = 0;
-int num_occupation = 1;
+int number_of_occupations = 3;
 
 // arrays of pids for all the processes
 pid_t arr_pids_occupation[MAX_NUM_OCUPATIONS];
@@ -64,6 +64,7 @@ char number_of_families[10];
 char range_starv_increase[10];
 char range_starv_decrease[10];
 char str_period_starvation_increase[10];
+char occupation_num[10];
 
 // IPCs resources
 int msg_ground;
@@ -121,7 +122,7 @@ int main(int argc, char **argv)
     alarm(simulation_threshold_time);
 
     // createPlanes();
-    // createOccupation();
+    createOccupation();
     //  create the workers
     //  1- collecting relief workers
     // createCollectingCommittees();
@@ -205,7 +206,7 @@ void createPlanes()
 
 void createOccupation()
 {
-    for (i = 0; i < num_occupation; i++)
+    for (i = 0; i < number_of_occupations; i++)
     {
 
         switch (pid = fork())
@@ -220,8 +221,10 @@ void createOccupation()
 
             sprintf(str_num_cargo_planes, "%d", num_cargo_planes);
             sprintf(number_of_committees, "%d", num_collecting_relief_committees);
+            sprintf(number_of_workers, "%d", num_distributing_relief_workers);
+            sprintf(occupation_num, "%d", i + 1);
 
-            execlp("./occupation", "occupation", str_num_cargo_planes, number_of_committees, NULL);
+            execlp("./occupation", "occupation", str_num_cargo_planes, number_of_committees, number_of_workers, occupation_num, NULL);
             perror("Error:Execute occupation Failed.\n");
             exit(1);
             break;
@@ -470,9 +473,9 @@ void exitProgram(int signum)
     fflush(stdout);
 
     // kill all the child processes
-    killAllProcesses(arr_pids_planes, num_cargo_planes);
-    killAllProcesses(arr_pids_occupation, num_occupation);
-    killAllProcesses(arr_pids_collecting_committees, num_collecting_relief_committees);
+    // killAllProcesses(arr_pids_planes, num_cargo_planes);
+    killAllProcesses(arr_pids_occupation, number_of_occupations);
+    // killAllProcesses(arr_pids_collecting_committees, num_collecting_relief_committees);
     killAllProcesses(arr_pids_distributing_workers, num_distributing_relief_workers);
     killAllProcesses(arr_pids_splitting_workers, num_splitting_relief_workers);
     killAllProcesses(arr_pids_families, 1);
