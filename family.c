@@ -62,19 +62,20 @@ void signal_handler_SIGALRM(int sig)
     printf("The alarm signal %d reached to the families,then the starvation of the families will be increased by random number\n\n", sig);
     acquireSem(sem_starviation_familes, 0, "family.c");
     printf("family acquire\n");
+
     for (int i = 0; i < number_of_families; i++)
     {
         if (families[i].starvation_level != 0) // the family who is not dead
         {
             families[i].starvation_level += get_random_number(range_starv_increase[0], range_starv_increase[1]);
-            printf("The starvation of the family %d increased to %d\n", families[i].family_num, families[i].starvation_level);
             if (families[i].starvation_level >= 100)
             {
-                printf("The family %d is dead\n", families[i].family_num);
                 families[i].starvation_level = 0; // dead
             }
         }
+        printf("The starvation of the family %d is %d\n", families[i].family_num, families[i].starvation_level);
     }
+    
     sleep(2);
     printf("family realase\n");
 
@@ -88,7 +89,7 @@ void fillFamilies(int number_of_families, Family *families)
     for (int i = 0; i < number_of_families; i++)
     {
         families[i].family_num = i + 1;
-        families[i].starvation_level = 60;
+        families[i].starvation_level = 50;
     }
 }
 

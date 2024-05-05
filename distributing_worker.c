@@ -38,6 +38,7 @@ int number_of_families;
 int number_of_workers;
 int range_starv_decrease[2];
 Family *sorted_families;
+int is_there_not_dead_families = 0;
 
 int main(int argc, char **argv)
 
@@ -228,18 +229,32 @@ void distributeBagsToFamillies()
     acquireSem(sem_starviation_familes, 0, "distributing_worker.c");
     printf("distributing worker %d acquire\n", distributing_worker->worker_num);
 
-    Family *sortedFamiles = sort_families();
-    for (int i = 0; i < distributing_worker->num_bags; i++)
+    Family *sortedFamiles = sort_families(is_there_not_dead_families);
+
+    if (is_there_not_dead_families == 0)
     {
-        if (sortedFamiles[i].starvation_level == 0) // when reached to the dead families
+        printf("There are no families to distribute the bags\n");
+        return;
+    }
+    else
+    {
+        int count = 0;
+        while (count != distributing_worker->num_bags)
         {
-            break;
-        }
-        printf("The distributing worker %d will distribute the bag to the family %d\n", distributing_worker->worker_num, sortedFamiles[i].family_num);
-        families[sortedFamiles[i].family_num - 1].starvation_level -= get_random_number(range_starv_decrease[0], range_starv_decrease[1]);
-        if (families[sortedFamiles[i].family_num - 1].starvation_level < 0)
-        {
-            families[sortedFamiles[i].family_num - 1].starvation_level = 1;
+            for (int i = 0; i < distributing_worker->num_bags; i++)
+            {
+                if (sortedFamiles[i].starvation_level == 0) // when reached to the dead families
+                {
+                    break;
+                }
+                count++;
+                printf("The distributing worker %d will distribute the bag to the family %d\n", distributing_worker->worker_num, sortedFamiles[i].family_num);
+                families[sortedFamiles[i].family_num - 1].starvation_level -= get_random_number(range_starv_decrease[0], range_starv_decrease[1]);
+                if (families[sortedFamiles[i].family_num - 1].starvation_level < 1)
+                {
+                    families[sortedFamiles[i].family_num - 1].starvation_level = 1; // lowest value
+                }
+            }
         }
     }
 
@@ -263,8 +278,13 @@ Family *sort_families()
 
     // print the sorted families
     printf("The sorted families based on the starvation level are:\n");
+    is_there_not_dead_families = 0;
     for (int i = 0; i < number_of_families; i++)
     {
+        if (sorted_families[i].starvation_level != 0)
+        {
+            is_there_not_dead_families = 1;
+        }
         printf("The starvation of the family %d is %d\n", sorted_families[i].family_num, sorted_families[i].starvation_level);
     }
     return sorted_families;
