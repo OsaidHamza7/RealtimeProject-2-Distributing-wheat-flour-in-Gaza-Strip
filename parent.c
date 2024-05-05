@@ -19,6 +19,7 @@ void createOccupation();
 void createCollectingCommittees();
 void createSplittingWorkers();
 void createDistributingWorkers();
+void createFamilies();
 //***********************************************************************************
 int arr_of_arguments[MAX_LINES];
 int is_alarmed = 0;
@@ -28,10 +29,11 @@ pid_t arr_pids_planes[MAX_NUM_PLANES];
 pid_t arr_pids_collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
 pid_t arr_pids_splitting_workers[MAX_NUM_SPLITTING_WORKERS];
 pid_t arr_pids_distributing_workers[MAX_NUM_DISTRIBUTING_WORKERS];
-
+pid_t arr_pids_families[MAX_NUM_FAMILIES];
 Plane planes[MAX_NUM_PLANES];
 Collecting_Committee collecting_committees[MAX_NUM_COLLECTION_COMMITTEES];
 Distributing_Worker distributing_workers[MAX_NUM_DISTRIBUTING_WORKERS];
+Family *families;
 
 int size = 0;
 int i = 0;
@@ -54,6 +56,7 @@ char *shmptr_plane;
 char *shmptr_collecting_committees;
 char *shmptr_splitted_bages;
 char *shmptr_distributing_workers;
+char *shmptr_families;
 char str_num_cargo_planes[10];
 char plane_num[10];
 char committee_num[10];
@@ -61,7 +64,10 @@ char splitting_worker_num[10];
 char distributing_worker_num[10];
 char number_of_committees[10];
 char number_of_workers[10];
-
+char number_of_families[10];
+char range_starv_increase[10];
+char range_starv_decrease[10];
+char str_period_starvation_increase[10];
 void createMessages()
 {
 
@@ -101,24 +107,31 @@ int main(int argc, char **argv)
 
     init_signals_handlers();
     alarm(simulation_threshold_time);
+
     // createPlanes();
     // createOccupation();
     //  create the workers
     //  1- collecting relief workers
     // createCollectingCommittees();
     //  2- splitting relief workers
+
     createMessages();
     createSplittingWorkers();
     createDistributingWorkers();
+    createFamilies();
+
     while (1)
     {
         pause();
+
         if (is_alarmed)
         {
             break;
         }
     }
+
     // exitProgram();
+
     return 0;
 }
 
@@ -294,8 +307,10 @@ void createDistributingWorkers()
             sprintf(str_energy_loss, "%d %d", energy_loss_range[0], energy_loss_range[1]);
             sprintf(distributing_worker_num, "%d", i + 1);
             sprintf(range_num_bags_distrib_worker, "%d %d", range_bags_per_distrib_worker[0], range_bags_per_distrib_worker[1]);
+            sprintf(number_of_families, "%d", num_families);
+            sprintf(range_starv_decrease, " %d %d", range_starvation_decrease[0], range_starvation_decrease[1]);
 
-            execlp("./distributing_worker", "distributing_worker", distributing_worker_num, range_num_bags_distrib_worker, str_period_trip_committees, str_range_energy_workers, str_period_energy_reduction, str_energy_loss, number_of_workers, NULL);
+            execlp("./distributing_worker", "distributing_worker", distributing_worker_num, range_num_bags_distrib_worker, str_period_trip_committees, str_range_energy_workers, str_period_energy_reduction, str_energy_loss, number_of_workers, number_of_families, range_starv_decrease, NULL);
             perror("Error:Execute  Distributing worker Failed.\n");
             exit(1);
             break;
@@ -308,6 +323,32 @@ void createDistributingWorkers()
     printf("*******************************************************************************\n");
 }
 
+void createFamilies()
+{
+
+    switch (pid = fork())
+    {
+    case -1: // Fork Failed
+        perror("Error:Fork Family Failed.\n");
+        exit(1);
+        break;
+
+    case 0: // I'm family
+
+        sprintf(number_of_families, "%d", num_families);
+        sprintf(range_starv_increase, " %d %d", range_starvation_increase[0], range_starvation_increase[1]);
+        sprintf(str_period_starvation_increase, "%d", period_starvation_increase);
+
+        execlp("./family", "family", number_of_families, str_period_starvation_increase, range_starv_increase, NULL);
+        perror("Error:Execute family Failed.\n");
+        exit(1);
+        break;
+
+    default: // I'm parent
+        arr_pids_families[0] = pid;
+        break;
+    }
+}
 /*
 function to initialize IPCs resources (shared memory, semaphores, message queues)
 */
@@ -328,6 +369,9 @@ void initializeIPCResources()
 
     shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, num_distributing_relief_workers * sizeof(struct Distributing_Worker), "parent.c");
     memcpy(shmptr_distributing_workers, distributing_workers, num_distributing_relief_workers * sizeof(struct Distributing_Worker)); // Copy the struct of all planes to the shared memory
+
+    shmptr_families = createSharedMemory(SHKEY_FAMILIES, num_families * sizeof(struct Family), "parent.c");
+    // families = (struct Family *)shmptr_families;
 
     // initial value is zero,there is no bags
     sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "parent.c");
@@ -357,6 +401,7 @@ void getArguments(int *numberArray)
     threshold_martyred_collecting_committee = numberArray[12];
     threshold_martyred_distributing_workers = numberArray[13];
     threshold_num_deceased_families = numberArray[14];
+    period_starvation_increase = numberArray[15];
 }
 
 void printArguments()
@@ -385,6 +430,10 @@ void printArguments()
     printf("threshold_martyred_collecting_committee = %d\n", threshold_martyred_collecting_committee);
     printf("threshold_martyred_distributing_workers = %d\n", threshold_martyred_distributing_workers);
     printf("threshold_num_deceased_families = %d\n", threshold_num_deceased_families);
+    printf("period_starvation_increase = %d\n", period_starvation_increase);
+    printf("range_starvation_increase = %d %d\n", range_starvation_increase[0], range_starvation_increase[1]);
+    printf("range_starvation_decrease = %d %d\n", range_starvation_decrease[0], range_starvation_decrease[1]);
+    printf("\n");
 }
 
 // function checkArguments
@@ -423,7 +472,7 @@ void exitProgram(int signum)
 
     killAllProcesses(arr_pids_distributing_workers, num_distributing_relief_workers);
     killAllProcesses(arr_pids_splitting_workers, num_splitting_relief_workers);
-
+    killAllProcesses(arr_pids_families, 1);
     printf("All child processes killed\n");
 
     printf("Cleaning up IPC resources...\n");
@@ -436,10 +485,12 @@ void exitProgram(int signum)
 
     deleteSemaphore(sem_splitted_bags);
     deleteSemaphore(sem_spaces_available);
+
     deleteSharedMemory(SHKEY_PLANES, num_cargo_planes * sizeof(struct Plane), shmptr_plane);
     deleteSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), shmptr_collecting_committees);
     deleteSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(Container), shmptr_splitted_bages);
     deleteSharedMemory(SHKEY_DISTRIBUTING_WORKERS, num_distributing_relief_workers * sizeof(struct Distributing_Worker), shmptr_distributing_workers);
+    deleteSharedMemory(SHKEY_FAMILIES, num_families * sizeof(struct Family), shmptr_families);
 
     printf("IPC resources cleaned up successfully\n");
     printf("Exiting...\n");

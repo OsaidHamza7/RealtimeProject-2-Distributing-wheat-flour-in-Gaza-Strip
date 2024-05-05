@@ -48,8 +48,12 @@
 #define SHKEY_COLLECTION_COMMITTEES 5555 // key for shared memory pid of the collection committees
 #define SHKEY_SPLITTING_WORKERS 6666     // key for shared memory pid of the splitting workers
 #define SHKEY_DISTRIBUTING_WORKERS 5566  // key for shared memory pid of the distributing workers
+
 #define SEMKEY_SPLITTED_BAGS 7777        // key for semaphore for the planes
 #define SEMKEY_SPACES_AVAILABLE 8888     // key for semaphore for the spaces available in the safe storage area
+#define SEMKEY_STARVATION_FAMILIES 9999
+
+
 struct String
 {
     char str[MAX_LINE_LENGTH];
@@ -100,6 +104,13 @@ struct Collecting_Committee
     int is_tripping;
 };
 typedef struct Collecting_Committee Collecting_Committee;
+
+struct Family
+{
+    int family_num;
+    int starvation_level;
+};
+typedef struct Family Family;
 // ====================================================================================
 extern int num_cargo_planes;
 extern int range_num_wheat_flour_containers[2];
@@ -124,6 +135,9 @@ extern int threshold_wheat_flour_containers_shoted;
 extern int threshold_martyred_collecting_committee;
 extern int threshold_martyred_distributing_workers;
 extern int threshold_num_deceased_families;
+extern int period_starvation_increase;
+extern int range_starvation_increase[2];
+extern int range_starvation_decrease[2];
 // ====================================================================================
 void readArgumentsFromFile(char *filename);
 void readFromFile(const char *filename, int *array);

@@ -9,6 +9,8 @@ int apply_trip_time();
 void get_information_worker(char **argv, int worker_num);
 void takeBagsFromShMem();
 void distributeBagsToFamillies();
+Family *sort_families();
+int compareFamilies(const void *a, const void *b);
 //***********************************************************************************
 
 char *shmptr_distributing_workers;
@@ -29,14 +31,21 @@ int distributing_worker_num;
 Distributing_Worker *distributing_worker;
 Distributing_Worker *distributing_workers;
 Distributing_Worker *temp;
+char *shmptr_families;
+Family *families;
+int sem_starviation_familes;
+int number_of_families;
+int number_of_workers;
+int range_starv_decrease[2];
+Family *sorted_families;
 
 int main(int argc, char **argv)
 
 {
     // check the number of arguments
-    if (argc < 8)
+    if (argc < 10)
     {
-        perror("The user should pass an argument like:distributing_worker_num,range_num_bags, period_trip_workers, range_energy_workers, period_energy_reduction, energy_loss_range,number_of_workers\n");
+        perror("The user should pass an argument like:distributing_worker_num,range_num_bags, period_trip_workers, range_energy_workers, period_energy_reduction, energy_loss_range,number_of_workers,num_familiesint range_starv_decrease\n");
         exit(-1);
     }
 
@@ -44,7 +53,8 @@ int main(int argc, char **argv)
 
     // get the arguments
     distributing_worker_num = atoi(argv[1]);
-    int number_of_workers = atoi(argv[7]);
+    number_of_workers = atoi(argv[7]);
+    number_of_families = atoi(argv[8]);
 
     shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, number_of_workers * sizeof(struct Distributing_Worker), "distributing_worker.c");
     distributing_workers = (struct Distributing_Worker *)shmptr_distributing_workers;
@@ -52,11 +62,18 @@ int main(int argc, char **argv)
     // Create a shared memory for splitted bages
     shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(Container), "distributing_worker.c");
 
-    sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "distributing.c");
-    sem_spaces_available = createSemaphore(SEMKEY_SPACES_AVAILABLE, 1, 1, "distributing.c");
+    //  open the shared memory of all families
+    shmptr_families = createSharedMemory(SHKEY_FAMILIES, number_of_families * sizeof(struct Family), "distributing_worker.c");
+    families = (struct Family *)shmptr_families;
+
+    sem_starviation_familes = createSemaphore(SEMKEY_STARVATION_FAMILIES, 1, 1, "distributing_wroker.c");
+
+    sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "distributing_wroker.c");
+    sem_spaces_available = createSemaphore(SEMKEY_SPACES_AVAILABLE, 1, 1, "distributing_wroker.c");
 
     get_information_worker(argv, distributing_worker_num);
     init_signals_handlers();
+
     while (1)
     {
         printf("Disttributing worker %d with %d bags is waiting for a bags from the splitting\n", distributing_worker->worker_num, distributing_worker->num_bags);
@@ -64,6 +81,7 @@ int main(int argc, char **argv)
         takeBagsFromShMem();
         distributeBagsToFamillies();
     }
+
     return 0;
 }
 
@@ -97,9 +115,9 @@ void signal_handler_MARTYRED(int sig)
 
 void signal_handler_SIGALRM(int sig)
 {
-    printf("The alarm signal %d reached to the distributing worker:%d then the energy reduced\n\n", sig, distributing_worker->worker_num);
+    /*printf("The alarm signal %d reached to the distributing worker:%d then the energy reduced\n\n", sig, distributing_worker->worker_num);
     is_alarmed = 1;
-    /*for (int i = 0; i < collecting_committee->num_workers; i++)
+    for (int i = 0; i < collecting_committee->num_workers; i++)
     {
         if (collecting_committee->workers[i].energy >= 5)
         {
@@ -147,6 +165,7 @@ void get_information_worker(char **argv, int distributing_worker_num)
     split_string(argv[4], range_energy_workers);
     periodic_energy_reduction = atoi(argv[5]);
     split_string(argv[6], range_energy_loss);
+    split_string(argv[9], range_starv_decrease);
 
     distributing_worker->worker_num = distributing_worker_num;
     distributing_worker->energy = get_random_number(range_energy_workers[0], range_energy_workers[1]);
@@ -190,7 +209,7 @@ void takeBagsFromShMem()
 
     releaseSem(sem_spaces_available, 0, "disttributing_worker.c"); // release the semaphore to allow other workers to edit the memory
     // printf("Disttributing worker %d is release spaces\n", distributing_worker_num);
-    printf("Distributing worker %d wrote splitted bages to the shared memory,value=%d.\n", distributing_worker_num, *shmptr_splitted_bages);
+    printf("Distributing worker %d toke splitted bages from the shared memory,value=%d.\n", distributing_worker_num, *shmptr_splitted_bages);
     fflush(stdout);
 
     if (*shmptr_splitted_bages > 0)
@@ -205,13 +224,55 @@ void takeBagsFromShMem()
 
 void distributeBagsToFamillies()
 {
-    if (distributing_worker->is_tripping == 1)
+
+    acquireSem(sem_starviation_familes, 0, "distributing_worker.c");
+    printf("distributing worker %d acquire\n", distributing_worker->worker_num);
+
+    Family *sortedFamiles = sort_families();
+    for (int i = 0; i < distributing_worker->num_bags; i++)
     {
-        printf("The distributing worker %d is distributing the bags to the families\n", distributing_worker->worker_num);
-        fflush(stdout);
-        sleep(5);
-        printf("The distributing worker %d finished distributing the bags to the families\n", distributing_worker->worker_num);
-        fflush(stdout);
+        if (sortedFamiles[i].starvation_level == 0) // when reached to the dead families
+        {
+            break;
+        }
+        printf("The distributing worker %d will distribute the bag to the family %d\n", distributing_worker->worker_num, sortedFamiles[i].family_num);
+        families[sortedFamiles[i].family_num - 1].starvation_level -= get_random_number(range_starv_decrease[0], range_starv_decrease[1]);
+        if (families[sortedFamiles[i].family_num - 1].starvation_level < 0)
+        {
+            families[sortedFamiles[i].family_num - 1].starvation_level = 1;
+        }
     }
-    apply_trip_time();
+
+    sleep(2);
+    printf("distributing worker %d realase\n", distributing_worker->worker_num);
+
+    releaseSem(sem_starviation_familes, 0, "distributing_worker.c");
+
+    apply_trip_time(); // go back to the safe storage area
+}
+
+Family *sort_families()
+{
+    // sort the families based on the starvation level
+    sorted_families = malloc(number_of_families * sizeof(Family));
+    // Copying the data
+    memcpy(sorted_families, families, number_of_families * sizeof(Family));
+
+    // Sorting the copied array
+    qsort(sorted_families, number_of_families, sizeof(struct Family), compareFamilies);
+
+    // print the sorted families
+    printf("The sorted families based on the starvation level are:\n");
+    for (int i = 0; i < number_of_families; i++)
+    {
+        printf("The starvation of the family %d is %d\n", sorted_families[i].family_num, sorted_families[i].starvation_level);
+    }
+    return sorted_families;
+}
+
+int compareFamilies(const void *a, const void *b)
+{
+    struct Family *familyA = (struct Family *)a;
+    struct Family *familyB = (struct Family *)b;
+    return familyB->starvation_level - familyA->starvation_level;
 }

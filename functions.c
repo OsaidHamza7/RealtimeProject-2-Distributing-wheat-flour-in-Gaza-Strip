@@ -23,51 +23,9 @@ int threshold_wheat_flour_containers_shoted = 5;
 int threshold_martyred_collecting_committee = 2;
 int threshold_martyred_distributing_workers = 5;
 int threshold_num_deceased_families = 5;
-
-void readArgumentsFromFile(char *filename)
-
-{
-    /*char line[200];
-    char label[50];
-
-    FILE *file;
-    file = fopen(filename, "r");
-
-    if (file == NULL)
-    {
-        perror("The file not exist\n");
-        exit(-2);
-    }
-    char separator[] = " ";
-
-    while (fgets(line, sizeof(line), file) != NULL)
-    {
-        char *str = strtok(line, separator);
-        strncpy(label, str, sizeof(label));
-        str = strtok(NULL, separator);
-
-        if (strcmp(label, "NUMBER_OF_LOST_ROUNDS") == 0)
-        {
-            NUMBER_OF_LOST_ROUNDS = atoi(str);
-        }
-
-        else if (strcmp(label, "SIMULATION_THRISHOLD") == 0)
-        {
-            SIMULATION_THRISHOLD = atoi(str);
-        }
-        else if (strcmp(label, "ROUND_TIME") == 0)
-        {
-            ROUND_TIME = atoi(str);
-        }
-        else if (strcmp(label, "RANGE_ENERGY") == 0)
-        {
-            RANGE_ENERGY[0] = atoi(str);
-            str = strtok(NULL, separator);
-            RANGE_ENERGY[1] = atoi(str);
-        }
-    }
-    fclose(file);*/
-}
+int period_starvation_increase = 10;
+int range_starvation_increase[2] = {5, 10};
+int range_starvation_decrease[2] = {5, 10};
 
 void readFromFile(const char *filename, int *array)
 {
@@ -147,6 +105,17 @@ void readFromFile(const char *filename, int *array)
             energy_loss_range[0] = min;
             energy_loss_range[1] = max;
         }
+        else if (strcmp(varName, "range_starvation_increase") == 0)
+        {
+            range_starvation_increase[0] = min;
+            range_starvation_increase[1] = max;
+        }
+        else if (strcmp(varName, "range_starvation_decrease") == 0)
+        {
+            range_starvation_decrease[0] = min;
+            range_starvation_decrease[1] = max;
+        }
+ 
     }
     fclose(file); // closing the file
 }
