@@ -36,23 +36,25 @@
 #define MAX_NUM_PLANES 100
 #define MAX_NUM_OCUPATIONS 10
 #define MAX_NUM_DISTRIBUTING_WORKERS 100
-
 #define MAX_NUM_WORKERS_IN_COMMITTEE 10
 #define MAX_NUM_COLLECTION_COMMITTEES 100
 #define MAX_NUM_SPLITTING_WORKERS 100
+
 #define MSGQKEY_GROUND 1111    // key for message queue for the ground
 #define MSGQKEY_SAFE_AREA 2222 // key for message queue the safe storage area
 
-#define SHKEY_FAMILIES 3333              // key for shared memory pid of the families
 #define SHKEY_PLANES 4444                // key for shared memory pid of the planes
 #define SHKEY_COLLECTION_COMMITTEES 5555 // key for shared memory pid of the collection committees
-#define SHKEY_SPLITTING_WORKERS 6666     // key for shared memory pid of the splitting workers
+#define SHKEY_SPLITTED_BAGS 6666         // key for shared memory pid of the splitting workers
 #define SHKEY_DISTRIBUTING_WORKERS 5566  // key for shared memory pid of the distributing workers
+#define SHKEY_FAMILIES 3333              // key for shared memory pid of the families
 
-#define SEMKEY_SPLITTED_BAGS 7777        // key for semaphore for the planes
-#define SEMKEY_SPACES_AVAILABLE 8888     // key for semaphore for the spaces available in the safe storage area
+#define SEMKEY_PLANES 1166                // key for semaphore for the planes
+#define SEMKEY_COLLECTING_COMMITTEES 2255 // key for semaphore for the collection committees
+#define SEMKEY_SPLITTED_BAGS 7777         // key for semaphore for the planes
+#define SEMKEY_SPACES_AVAILABLE 8888      // key for semaphore for the spaces available in the safe storage area
+#define SEMKEY_DISTRIBUTING_WORKERS 5533  // key for semaphore for the distributing workers
 #define SEMKEY_STARVATION_FAMILIES 9999
-
 
 struct String
 {
@@ -111,6 +113,7 @@ struct Family
     int starvation_level;
 };
 typedef struct Family Family;
+
 // ====================================================================================
 extern int num_cargo_planes;
 extern int range_num_wheat_flour_containers[2];
@@ -145,4 +148,5 @@ char *trim(char *str);
 void killAllProcesses(int *arr_pid, int size);
 void split_string(char *argv, int arr[]);
 int get_random_number(int min, int max);
+
 #endif

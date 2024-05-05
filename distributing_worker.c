@@ -27,7 +27,7 @@ int range_num_bags_distrib_worker[2];
 int is_alarmed;
 int is_worker_dead;
 int distributing_worker_num;
-
+int sem_distributing_workers;
 Distributing_Worker *distributing_worker;
 Distributing_Worker *distributing_workers;
 Distributing_Worker *temp;
@@ -57,18 +57,17 @@ int main(int argc, char **argv)
     number_of_workers = atoi(argv[7]);
     number_of_families = atoi(argv[8]);
 
-    shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, number_of_workers * sizeof(struct Distributing_Worker), "distributing_worker.c");
+    // Open a shared memories
+    shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, number_of_workers * sizeof(struct Distributing_Worker), "distributing_worker.c"); // Open a shared memory for the distributing workers
+    shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTED_BAGS, sizeof(Container), "distributing_worker.c");                                                   // Open a shared memory for splitted bages
+    shmptr_families = createSharedMemory(SHKEY_FAMILIES, number_of_families * sizeof(struct Family), "distributing_worker.c");                                     // Open the shared memory of all families
+
     distributing_workers = (struct Distributing_Worker *)shmptr_distributing_workers;
-
-    // Create a shared memory for splitted bages
-    shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(Container), "distributing_worker.c");
-
-    //  open the shared memory of all families
-    shmptr_families = createSharedMemory(SHKEY_FAMILIES, number_of_families * sizeof(struct Family), "distributing_worker.c");
     families = (struct Family *)shmptr_families;
 
+    // Open the semaphores
+    sem_distributing_workers = createSemaphore(SEMKEY_DISTRIBUTING_WORKERS, 1, 1, "parent.c");
     sem_starviation_familes = createSemaphore(SEMKEY_STARVATION_FAMILIES, 1, 1, "distributing_wroker.c");
-
     sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "distributing_wroker.c");
     sem_spaces_available = createSemaphore(SEMKEY_SPACES_AVAILABLE, 1, 1, "distributing_wroker.c");
 
@@ -78,7 +77,10 @@ int main(int argc, char **argv)
     while (1)
     {
         printf("Disttributing worker %d with %d bags is waiting for a bags from the splitting\n", distributing_worker->worker_num, distributing_worker->num_bags);
+        acquireSem(sem_distributing_workers, 0, "distributing_worker.c");
         distributing_worker->is_tripping = 0;
+        releaseSem(sem_distributing_workers, 0, "distributing_worker.c");
+
         takeBagsFromShMem();
         distributeBagsToFamillies();
     }
@@ -107,7 +109,6 @@ void init_signals_handlers()
     }
 }
 
-// function SIGHUB
 void signal_handler_MARTYRED(int sig)
 {
     printf("The signal %d reached,then the distributing worker %d is killed\n\n", sig, distributing_worker->worker_num);
@@ -116,17 +117,18 @@ void signal_handler_MARTYRED(int sig)
 
 void signal_handler_SIGALRM(int sig)
 {
-    /*printf("The alarm signal %d reached to the distributing worker:%d then the energy reduced\n\n", sig, distributing_worker->worker_num);
+    printf("The alarm signal %d reached to the distributing worker:%d then the energy reduced\n\n", sig, distributing_worker->worker_num);
     is_alarmed = 1;
-    for (int i = 0; i < collecting_committee->num_workers; i++)
+    acquireSem(sem_distributing_workers, 0, "distributing_worker.c");
+    distributing_worker->energy -= get_random_number(range_energy_loss[0], range_energy_loss[1]);
+    if (distributing_worker->energy < 0)
     {
-        if (collecting_committee->workers[i].energy >= 5)
-        {
-            collecting_committee->workers[i].energy -= get_random_number(range_energy_loss[0], range_energy_loss[1]);
-            printf("Worker %d in committee %d has energy %d\n", collecting_committee->workers[i].worker_num, collecting_committee->committee_num, collecting_committee->workers[i].energy);
-        }
+        distributing_worker->energy = 0;
     }
-    alarm(periodic_energy_reduction);*/
+    printf("The distributing worker %d has energy %d\n", distributing_worker->worker_num, distributing_worker->energy);
+    releaseSem(sem_distributing_workers, 0, "distributing_worker.c");
+
+    alarm(periodic_energy_reduction);
 }
 
 void signal_handler_SIGINT(int sig)
@@ -168,11 +170,15 @@ void get_information_worker(char **argv, int distributing_worker_num)
     split_string(argv[6], range_energy_loss);
     split_string(argv[9], range_starv_decrease);
 
+    acquireSem(sem_distributing_workers, 0, "distributing_worker.c");
+
     distributing_worker->worker_num = distributing_worker_num;
     distributing_worker->energy = get_random_number(range_energy_workers[0], range_energy_workers[1]);
     distributing_worker->num_bags = get_random_number(range_num_bags_distrib_worker[0], range_num_bags_distrib_worker[1]);
     distributing_worker->trip_time = get_random_number(period_trip_worker[0], period_trip_worker[1]);
     distributing_worker->is_tripping = 0;
+
+    releaseSem(sem_distributing_workers, 0, "distributing_worker.c");
 
     printf("Distributing worker %d has energy:%d\n", distributing_worker->worker_num, distributing_worker->energy);
     printf("Distributing worker %d with max num_bags:%d and the trip time is %d\n", distributing_worker->worker_num, distributing_worker->num_bags, distributing_worker->trip_time);
@@ -218,9 +224,15 @@ void takeBagsFromShMem()
         releaseSem(sem_splitted_bags, 0, "disttributing_worker.c"); // release the semaphore to allow other workers to edit the memory
         // printf("Disttributing worker %d is release available bags\n", distributing_worker_num);
     }
-
+    acquireSem(sem_distributing_workers, 0, "distributing_worker.c");
     distributing_worker->is_tripping = 1;
+    releaseSem(sem_distributing_workers, 0, "distributing_worker.c");
+
     apply_trip_time(); // disttributing worker will distributes the bags to the families
+
+    acquireSem(sem_distributing_workers, 0, "distributing_worker.c");
+    distributing_worker->is_tripping = 0;
+    releaseSem(sem_distributing_workers, 0, "distributing_worker.c");
 }
 
 void distributeBagsToFamillies()
@@ -262,6 +274,10 @@ void distributeBagsToFamillies()
     printf("distributing worker %d realase\n", distributing_worker->worker_num);
 
     releaseSem(sem_starviation_familes, 0, "distributing_worker.c");
+
+    acquireSem(sem_distributing_workers, 0, "distributing_worker.c");
+    distributing_worker->is_tripping = 1;
+    releaseSem(sem_distributing_workers, 0, "distributing_worker.c");
 
     apply_trip_time(); // go back to the safe storage area
 }

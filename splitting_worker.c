@@ -29,7 +29,7 @@ int main(int argc, char **argv)
     msg_safe_area_id = createMessageQueue(MSGQKEY_SAFE_AREA, "splitting_worker.c");
 
     // Create a shared memory for splitted bages
-    shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTING_WORKERS, sizeof(Container), "splitting_worker.c");
+    shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTED_BAGS, sizeof(Container), "splitting_worker.c");
 
     sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "splitting.c");
     sem_spaces_available = createSemaphore(SEMKEY_SPACES_AVAILABLE, 1, 1, "splitting.c");
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
         acquireSem(sem_spaces_available, 0, "splitting_worker.c");
         printf("Splitting worker %d is acquire spaces\n", splitting_worker_num);
         int y = *shmptr_splitted_bages;
-        // sleep(3); // Time taken to split the container into the bags
+        sleep(1); // Time taken to split the container into the bags
         *shmptr_splitted_bages += container.capacity_of_bags;
         releaseSem(sem_spaces_available, 0, "splitting_worker.c");
         printf("Splitting worker %d is release spaces\n", splitting_worker_num);
@@ -67,7 +67,7 @@ int main(int argc, char **argv)
             printf("Splitting worker %d is release avialbe bags\n", splitting_worker_num);
         }
         printf("Splitting worker %d wrote splitted bages to the shared memory,value=%d.\n", splitting_worker_num, *shmptr_splitted_bages);
-        sleep(5);
+        sleep(1); // time to take another container to split it
     }
     return 0;
 }

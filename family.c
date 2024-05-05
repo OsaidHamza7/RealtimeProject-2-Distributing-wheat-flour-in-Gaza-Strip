@@ -86,11 +86,13 @@ void signal_handler_SIGALRM(int sig)
 
 void fillFamilies(int number_of_families, Family *families)
 {
+    acquireSem(sem_starviation_familes, 0, "family.c");
     for (int i = 0; i < number_of_families; i++)
     {
         families[i].family_num = i + 1;
         families[i].starvation_level = 50;
     }
+    releaseSem(sem_starviation_familes, 0, "family.c");
 }
 
 void getInformation(char **argv)

@@ -10,6 +10,7 @@ void signal_handler_CRASHED(int sig);
 //***********************************************************************************
 Plane *plane;
 char *shmptr_plane;
+int sem_planes;
 Plane *planes;
 
 int range_num_containers[2];
@@ -32,14 +33,15 @@ int main(int argc, char **argv)
     num_planes = atoi(argv[6]);
     init_signals_handlers();
 
+    // open the ground message queue
+    msg_ground = createMessageQueue(MSGQKEY_GROUND, "plane.c");
+
     shmptr_plane = createSharedMemory(SHKEY_PLANES, num_planes * sizeof(struct Plane), "plane.c");
     planes = (struct Plane *)shmptr_plane;
 
+    sem_planes = createSemaphore(SEMKEY_PLANES, 1, 1, "plane.c");
     // get the information of the plane
     get_information_plane(argv);
-
-    // open the ground message queue
-    msg_ground = createMessageQueue(MSGQKEY_GROUND, "plane.c");
 
     // write the conainers to the ground message queue,after dropping time of the container
     while (1)
@@ -49,9 +51,11 @@ int main(int argc, char **argv)
             printf("The plane %d goes to bring containers\n", plane->plane_num);
             sleep(time_refill_plane);
             createContainers();
-            //printContainers();
+            // printContainers();
         }
+        acquireSem(sem_planes, 0, "plane.c");
         plane->is_refilling = 0;
+        releaseSem(sem_planes, 0, "plane.c");
 
         // start drop the containers
         printf("Plane %d start dropping the containers\n", plane->plane_num);
@@ -65,6 +69,7 @@ int main(int argc, char **argv)
 
             if (n != 0) // if the plane is shotted by occupation
             {
+                acquireSem(sem_planes, 0, "plane.c");
                 double ratio = (double)n / plane->containers[i].dropping_time;
                 if (ratio < 0.5)
                 {
@@ -77,6 +82,10 @@ int main(int argc, char **argv)
                     plane->containers[i].capacity_of_bags = 0;
                     printf("Container %d of plane %d is killed TOTALY and new bags=%d\n", plane->containers[i].conatiner_num, plane->plane_num, plane->containers[i].capacity_of_bags);
                     fflush(stdout);
+                }
+                releaseSem(sem_planes, 0, "plane.c");
+                if (plane->containers[i].capacity_of_bags == 0)
+                {
                     continue;
                 }
             }
@@ -96,7 +105,9 @@ int main(int argc, char **argv)
             printf("Container %d of plane %d with bags=%d wrritten in ground meessage queue\n", plane->containers[i].conatiner_num, plane->plane_num, plane->containers[i].capacity_of_bags);
             fflush(stdout);
         }
+        acquireSem(sem_planes, 0, "plane.c");
         plane->is_refilling = 1;
+        releaseSem(sem_planes, 0, "plane.c");
     }
 
     return 0;
@@ -149,6 +160,7 @@ void get_information_plane(char **argv)
 {
     int plane_num = atoi(argv[1]);
     plane = &planes[plane_num - 1];
+    acquireSem(sem_planes, 0, "plane.c");
 
     plane->is_refilling = 1;
     plane->pid = getpid();
@@ -161,7 +173,7 @@ void get_information_plane(char **argv)
 
     plane->num_containers = get_random_number(range_num_containers[0], range_num_containers[1]);
     time_refill_plane = get_random_number(range_refill_planes[0], range_refill_planes[1]);
-
+    releaseSem(sem_planes, 0, "plane.c");
     /*printf("The range of the number of wheat flour containers is: %d - %d\n", range_num_containers[0], range_num_containers[1]);
     printf("The range of the number of bags is: %d - %d\n", range_num_bags[0], range_num_bags[1]);
     printf("The range of the dropping time is: %d - %d\n", rane_dropping_time[0], rane_dropping_time[1]);
