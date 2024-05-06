@@ -83,6 +83,7 @@ struct Worker
 {
     int worker_num;
     int energy;
+    int is_martyred;
 };
 typedef struct Worker Worker;
 
@@ -104,6 +105,7 @@ struct Collecting_Committee
     int committee_num;
     int num_workers;
     Worker workers[MAX_NUM_WORKERS_IN_COMMITTEE];
+    int num_killed_workers;
     int trip_time;
     int is_tripping;
 };

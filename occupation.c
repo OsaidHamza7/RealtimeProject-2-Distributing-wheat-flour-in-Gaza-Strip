@@ -29,6 +29,7 @@ Distributing_Worker *sorted_current_distributing_workers;
 int crrent_number_distributing_workers; // Number of current planes
 int is_distributing_workers_here = 0;   // flag to check if there are planes or not
 int occupation_num;
+int sem_collecting_committees;
 //***********************************************************************************.
 
 int main(int argc, char **argv)
@@ -54,6 +55,8 @@ int main(int argc, char **argv)
     collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
     distributing_workers = (struct Distributing_Worker *)shmptr_distributing_workers;
 
+    sem_collecting_committees = createSemaphore(SEMKEY_COLLECTING_COMMITTEES, 1, 1, "occupation.c");
+
     while (1)
     {
         sleep(5);
@@ -65,11 +68,10 @@ int main(int argc, char **argv)
             return 0;
             break;
         case 2:
-            // killCommittees();
-            return 0;
+            killCommittees();
             break;
         case 3:
-            killDistributingWorkers();
+            // killDistributingWorkers();
             break;
 
         default:
@@ -97,14 +99,16 @@ void killPlanes()
 void killCommittees()
 {
     getCurrentCollectingCommitteesNumbers();
+
     if (!is_committees_here)
     {
-        printf("There are no committees\n");
+        printf("There are no committees to kill\n");
         return;
     }
+
     int committee_indx = rand() % crrent_number_collecting_committees; // get a random index of current planes numbers array
-    int committee_num = current_planes_numbers[committee_indx];
-    kill(collecting_committees[committee_num - 1].pid, SIGHUP); // kill the current container in the plane
+    int committee_num = current_collecting_committees_numbers[committee_indx];
+    kill(collecting_committees[committee_num - 1].pid, SIGINT); // kill the current container in the plane
     printf("Committee %d with pid=%d is shotted by the snipers\n", committee_num, collecting_committees[committee_num - 1].pid);
 
     printf("=====================================================\n");
@@ -153,20 +157,21 @@ void getCurrentPlaneNumbers()
 
 void getCurrentCollectingCommitteesNumbers()
 {
-    // make the array current_planes_numbers empty
-
     is_committees_here = 0;
-
     crrent_number_collecting_committees = 0;
+    acquireSem(sem_collecting_committees, 0, "occupation.c");
+
     for (int i = 0; i < number_of_committees; i++)
     {
-        if (!collecting_committees[i].is_tripping)
+        if (collecting_committees[i].is_tripping && collecting_committees[i].num_workers != collecting_committees[i].num_killed_workers)
         {
+            printf("Committee %d is tripping\n", collecting_committees[i].committee_num);
             current_collecting_committees_numbers[crrent_number_collecting_committees] = i + 1;
             crrent_number_collecting_committees++;
             is_committees_here = 1;
         }
     }
+    releaseSem(sem_collecting_committees, 0, "occupation.c");
 }
 
 int getCurrentDistributingWorkers()

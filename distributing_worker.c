@@ -241,7 +241,6 @@ void takeBagsFromShMem()
 
 void distributeBagsToFamillies()
 {
-
     acquireSem(sem_starviation_familes, 0, "distributing_worker.c");
     printf("distributing worker %d acquire\n", distributing_worker->worker_num);
 

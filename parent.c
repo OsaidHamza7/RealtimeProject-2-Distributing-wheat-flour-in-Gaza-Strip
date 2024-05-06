@@ -86,11 +86,11 @@ void createMessages()
 
     Container x;
     x.capacity_of_bags = 3;
-    for (int i = 0; i < 5; i++)
+    for (int i = 0; i < 10; i++)
     {
         x.conatiner_num = i + 1;
 
-        if (msgsnd(msg_safe_area, &x, sizeof(x), 0) == -1)
+        if (msgsnd(msg_ground, &x, sizeof(x), 0) == -1)
         {
             perror("p tryarent:msgsnd");
             return;
@@ -125,13 +125,13 @@ int main(int argc, char **argv)
     createOccupation();
     //  create the workers
     //  1- collecting relief workers
-    // createCollectingCommittees();
+    createCollectingCommittees();
     //  2- splitting relief workers
 
     createMessages();
-    createSplittingWorkers();
-    createDistributingWorkers();
-    createFamilies();
+    //createSplittingWorkers();
+    //createDistributingWorkers();
+    //createFamilies();
 
     while (1)
     {
@@ -475,10 +475,10 @@ void exitProgram(int signum)
     // kill all the child processes
     // killAllProcesses(arr_pids_planes, num_cargo_planes);
     killAllProcesses(arr_pids_occupation, number_of_occupations);
-    // killAllProcesses(arr_pids_collecting_committees, num_collecting_relief_committees);
-    killAllProcesses(arr_pids_distributing_workers, num_distributing_relief_workers);
-    killAllProcesses(arr_pids_splitting_workers, num_splitting_relief_workers);
-    killAllProcesses(arr_pids_families, 1);
+    killAllProcesses(arr_pids_collecting_committees, num_collecting_relief_committees);
+    //killAllProcesses(arr_pids_distributing_workers, num_distributing_relief_workers);
+    //killAllProcesses(arr_pids_splitting_workers, num_splitting_relief_workers);
+    //killAllProcesses(arr_pids_families, 1);
     printf("All child processes killed\n");
 
     printf("Cleaning up IPC resources...\n");
