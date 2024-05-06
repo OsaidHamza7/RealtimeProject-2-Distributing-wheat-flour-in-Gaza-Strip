@@ -14,7 +14,7 @@ void createPlanes();
 void getArguments(int *numberArray);
 void printArguments();
 void initializeIPCResources();
-void exitProgram(int signum);
+void exitProgram();
 void createOccupation();
 void createCollectingCommittees();
 void createSplittingWorkers();
@@ -67,13 +67,22 @@ char str_period_starvation_increase[10];
 char occupation_num[10];
 
 // IPCs resources
+// message queues
 int msg_ground;
 int msg_safe_area;
+// shared memories for struct of processes
 char *shmptr_plane;
 char *shmptr_collecting_committees;
 char *shmptr_splitted_bages;
 char *shmptr_distributing_workers;
 char *shmptr_families;
+// shared memories for thresholds
+char *shmptr_threshold_num_cargo_planes_crashed;
+char *shmptr_threshold_wheat_flour_containers_shoted;
+char *shmptr_threshold_martyred_collecting_committee;
+char *shmptr_threshold_martyred_distributing_workers;
+char *shmptr_threshold_num_deceased_families;
+// semaphores
 int sem_splitted_bags;
 int sem_spaces_available;
 int sem_planes;
@@ -117,49 +126,78 @@ int main(int argc, char **argv)
 
     // initialize IPCs resources (shared memory, semaphores, message queues)
     initializeIPCResources();
-
+    printf("hiiiiiiiiiiiiiiiiiiiiiii\n");
     init_signals_handlers();
     alarm(simulation_threshold_time);
 
+    createMessages(); // fill the ground MSG with 10 containers
+
     // createPlanes();
-    createOccupation();
+
     //  create the workers
     //  1- collecting relief workers
     createCollectingCommittees();
     //  2- splitting relief workers
+    createSplittingWorkers();
+    //  3- distributing relief workers
+    createDistributingWorkers();
 
-    createMessages();
-    //createSplittingWorkers();
-    //createDistributingWorkers();
-    //createFamilies();
+    createFamilies();
+    createOccupation();
 
     while (1)
     {
-        pause();
-
+        // pause();
+        sleep(1);
         if (is_alarmed)
         {
+            printf("The trishold time is reached, the program is finished.\n\n");
+            break;
+        }
+        else if (threshold_num_cargo_planes_crashed == *shmptr_threshold_num_cargo_planes_crashed)
+        {
+            printf("The number of crashed planes reached the threshold, the program is finished.\n\n");
+            break;
+        }
+        /*else if (threshold_wheat_flour_containers_shoted == 1)
+        {
+            printf("The number of shoted wheat flour containers reached the threshold, the program is finished.\n\n");
+            break;
+        }*/
+        else if (threshold_martyred_collecting_committee == *shmptr_threshold_martyred_collecting_committee)
+        {
+            printf("The number of martyred collecting committees reached the threshold, the program is finished.\n\n");
+            break;
+        }
+        else if (threshold_martyred_distributing_workers == *shmptr_threshold_martyred_distributing_workers)
+        {
+            printf("The number of martyred distributing workers reached the threshold, the program is finished.\n\n");
+            break;
+        }
+        else if (threshold_num_deceased_families <= *shmptr_threshold_num_deceased_families)
+        {
+            printf("The number of deceased families reached the threshold, the program is finished.\n\n");
             break;
         }
     }
 
-    // exitProgram();
+    exitProgram();
 
     return 0;
 }
 
 void init_signals_handlers()
 {
-    if (sigset(SIGALRM, exitProgram) == -1)
+    if (sigset(SIGALRM, signal_handler_SIGALRM) == -1)
     { // set the signal handler for SIGALRM
         perror("Signal Error\n");
         exit(-1);
     }
-    if (sigset(SIGINT, exitProgram) == -1)
+    /*if (sigset(SIGINT, exitProgram) == -1)
     { // set the signal handler for SIGALRM
         perror("Signal Error\n");
         exit(-1);
-    }
+    }*/
 }
 
 // function signal_handler_SIGALRM
@@ -373,18 +411,31 @@ void initializeIPCResources()
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "parent.c");       // Create a massage queue for the ground
     msg_safe_area = createMessageQueue(MSGQKEY_SAFE_AREA, "parent.c"); // Create a massage queue for the safe storage area
 
-    // Create a Shared Memories (4 shared memories done)
+    // Create a Shared Memories for struct of processes (4 shared memories done)
     shmptr_plane = createSharedMemory(SHKEY_PLANES, num_cargo_planes * sizeof(struct Plane), "parent.c");                                                               // Create a shared memory for all struct planes
     shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, num_collecting_relief_committees * sizeof(struct Collecting_Committee), "parent.c"); // Create a shared memory for all struct of the collecting committees
     shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTED_BAGS, sizeof(Container), "parent.c");                                                                     // Create a shared memory for splitted bages
     shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, num_distributing_relief_workers * sizeof(struct Distributing_Worker), "parent.c");
     shmptr_families = createSharedMemory(SHKEY_FAMILIES, num_families * sizeof(struct Family), "parent.c");
+    // Create a Shared Memories for thresholds (5 shared memories done)
+    shmptr_threshold_num_cargo_planes_crashed = createSharedMemory(SHKEY_THRESHOLD_NUM_CARGO_PLANES_CRASHED, sizeof(int), "parent.c");
+    shmptr_threshold_wheat_flour_containers_shoted = createSharedMemory(SHKEY_THRESHOLD_WHEAT_FLOUR_CONTAINERS_SHOTED, sizeof(int), "parent.c");
+    shmptr_threshold_martyred_collecting_committee = createSharedMemory(SHKEY_THRESHOLD_MARTYRED_COLLECTING_COMMITTEE, sizeof(int), "parent.c");
+    shmptr_threshold_martyred_distributing_workers = createSharedMemory(SHKEY_THRESHOLD_MARTYRED_DISTRIBUTING_WORKERS, sizeof(int), "parent.c");
+    shmptr_threshold_num_deceased_families = createSharedMemory(SHKEY_THRESHOLD_NUM_DECEASED_FAMILIES, sizeof(int), "parent.c");
 
     // Copy the the shared memories
     memcpy(shmptr_plane, planes, num_cargo_planes * sizeof(struct Plane));                                                               // Copy the struct of all planes to the shared memory
     memcpy(shmptr_collecting_committees, collecting_committees, num_collecting_relief_committees * sizeof(struct Collecting_Committee)); // Copy the struct of all planes to the shared memory
-    memcpy(shmptr_splitted_bages, &x, sizeof(int) * 2);                                                                                  // Copy the struct of all planes to the shared memory
+    memcpy(shmptr_splitted_bages, &x, sizeof(Container));                                                                                // Copy the struct of all planes to the shared memory
     memcpy(shmptr_distributing_workers, distributing_workers, num_distributing_relief_workers * sizeof(struct Distributing_Worker));     // Copy the struct of all planes to the shared memory
+
+    // Copy the the shared memories for thresholds
+    memcpy(shmptr_threshold_num_cargo_planes_crashed, &x, sizeof(int));
+    memcpy(shmptr_threshold_wheat_flour_containers_shoted, &x, sizeof(int));
+    memcpy(shmptr_threshold_martyred_collecting_committee, &x, sizeof(int));
+    memcpy(shmptr_threshold_martyred_distributing_workers, &x, sizeof(int));
+    memcpy(shmptr_threshold_num_deceased_families, &x, sizeof(int));
 
     // Create a Semaphores
     sem_planes = createSemaphore(SEMKEY_PLANES, 1, 1, "parent.c");
@@ -392,7 +443,7 @@ void initializeIPCResources()
     sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "parent.c");
     sem_spaces_available = createSemaphore(SEMKEY_SPACES_AVAILABLE, 1, 1, "parent.c");
     sem_distributing_workers = createSemaphore(SEMKEY_DISTRIBUTING_WORKERS, 1, 1, "parent.c");
-    sem_starviation_familes = createSemaphore(SEMKEY_STARVATION_FAMILIES, 1, 1, "family.c");
+    sem_starviation_familes = createSemaphore(SEMKEY_STARVATION_FAMILIES, 1, 1, "parent.c");
 }
 
 void getArguments(int *numberArray)
@@ -463,11 +514,8 @@ void checkArguments(int argc, char **argv, char *file_name)
     }
 }
 
-void exitProgram(int signum)
+void exitProgram()
 {
-    is_alarmed = 1;
-    printf("The signal %d reached the parent, the program is finished.\n\n", signum);
-    fflush(stdout);
 
     printf("\nKilling all processes...\n");
     fflush(stdout);
@@ -476,9 +524,9 @@ void exitProgram(int signum)
     // killAllProcesses(arr_pids_planes, num_cargo_planes);
     killAllProcesses(arr_pids_occupation, number_of_occupations);
     killAllProcesses(arr_pids_collecting_committees, num_collecting_relief_committees);
-    //killAllProcesses(arr_pids_distributing_workers, num_distributing_relief_workers);
-    //killAllProcesses(arr_pids_splitting_workers, num_splitting_relief_workers);
-    //killAllProcesses(arr_pids_families, 1);
+    killAllProcesses(arr_pids_distributing_workers, num_distributing_relief_workers);
+    killAllProcesses(arr_pids_splitting_workers, num_splitting_relief_workers);
+    killAllProcesses(arr_pids_families, 1);
     printf("All child processes killed\n");
 
     printf("Cleaning up IPC resources...\n");

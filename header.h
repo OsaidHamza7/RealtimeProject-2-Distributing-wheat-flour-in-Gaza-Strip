@@ -49,6 +49,13 @@
 #define SHKEY_DISTRIBUTING_WORKERS 5566  // key for shared memory pid of the distributing workers
 #define SHKEY_FAMILIES 3333              // key for shared memory pid of the families
 
+#define SHKEY_THRESHOLD_NUM_CARGO_PLANES_CRASHED 8888
+#define SHKEY_THRESHOLD_WHEAT_FLOUR_CONTAINERS_SHOTED 9999
+#define SHKEY_THRESHOLD_MARTYRED_COLLECTING_COMMITTEE 1010
+#define SHKEY_THRESHOLD_MARTYRED_DISTRIBUTING_WORKERS 1111
+#define SHKEY_THRESHOLD_NUM_DECEASED_FAMILIES 1212
+
+
 #define SEMKEY_PLANES 1166                // key for semaphore for the planes
 #define SEMKEY_COLLECTING_COMMITTEES 2255 // key for semaphore for the collection committees
 #define SEMKEY_SPLITTED_BAGS 7777         // key for semaphore for the planes

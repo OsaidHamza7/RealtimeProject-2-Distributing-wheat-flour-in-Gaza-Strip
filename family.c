@@ -8,6 +8,7 @@ void fillFamilies(int number_of_families, Family *families);
 //***********************************************************************************
 int number_of_families;
 char *shmptr_families;
+char *shmptr_threshold_num_deceased_families;
 Family *families;
 
 int periodic_starvation_increase;
@@ -30,6 +31,8 @@ int main(int argc, char **argv)
 
     //  open the shared memory of all families
     shmptr_families = createSharedMemory(SHKEY_FAMILIES, number_of_families * sizeof(struct Family), "family.c");
+    shmptr_threshold_num_deceased_families = createSharedMemory(SHKEY_THRESHOLD_NUM_DECEASED_FAMILIES, sizeof(int), "family.c");
+
     families = (struct Family *)shmptr_families;
 
     sem_starviation_familes = createSemaphore(SEMKEY_STARVATION_FAMILIES, 1, 1, "family.c");
@@ -71,11 +74,12 @@ void signal_handler_SIGALRM(int sig)
             if (families[i].starvation_level >= 100)
             {
                 families[i].starvation_level = 0; // dead
+                *shmptr_threshold_num_deceased_families += 1;
             }
         }
         printf("The starvation of the family %d is %d\n", families[i].family_num, families[i].starvation_level);
     }
-    
+
     sleep(2);
     printf("family realase\n");
 

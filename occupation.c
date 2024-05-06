@@ -65,13 +65,12 @@ int main(int argc, char **argv)
         {
         case 1:
             // killPlanes();
-            return 0;
             break;
         case 2:
             killCommittees();
             break;
         case 3:
-            // killDistributingWorkers();
+            killDistributingWorkers();
             break;
 
         default:

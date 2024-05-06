@@ -111,7 +111,7 @@ int main(int argc, char **argv)
             return 0;
         }
         // send the container to the safe area
-        if (msgsnd(msg_safe_area_id, &container.capacity_of_bags, sizeof(container), 0) == -1)
+        if (msgsnd(msg_safe_area_id, &container, sizeof(container), 0) == -1)
         {
             perror("Committee:msgsnd");
             return 4;
