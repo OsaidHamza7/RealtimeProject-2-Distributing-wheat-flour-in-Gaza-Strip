@@ -55,7 +55,6 @@
 #define SHKEY_THRESHOLD_MARTYRED_DISTRIBUTING_WORKERS 1111
 #define SHKEY_THRESHOLD_NUM_DECEASED_FAMILIES 1212
 
-
 #define SEMKEY_PLANES 1166                // key for semaphore for the planes
 #define SEMKEY_COLLECTING_COMMITTEES 2255 // key for semaphore for the collection committees
 #define SEMKEY_SPLITTED_BAGS 7777         // key for semaphore for the planes
@@ -83,6 +82,7 @@ struct Plane
     int num_containers;
     Container containers[MAX_NUM_CONTINARS];
     int is_refilling;
+    int is_crashed;
 };
 typedef struct Plane Plane;
 
@@ -146,7 +146,7 @@ extern int simulation_threshold_time;
 extern int threshold_families_death_rate;
 extern int threshold_num_cargo_planes_crashed;
 extern int threshold_wheat_flour_containers_shoted;
-extern int threshold_martyred_collecting_committee;
+extern int threshold_martyred_collecting_committee_workers;
 extern int threshold_martyred_distributing_workers;
 extern int threshold_num_deceased_families;
 extern int period_starvation_increase;

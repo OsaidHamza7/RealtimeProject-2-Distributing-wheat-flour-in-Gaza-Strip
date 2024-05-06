@@ -114,6 +114,7 @@ void signal_handler_MARTYRED(int sig)
     printf("The signal %d reached,then the distributing worker %d is killed\n\n", sig, distributing_worker->worker_num);
     fflush(stdout);
     distributing_worker->is_martyred = 1;
+    kill(getppid(), SIGCLD);
     exit(0);
 }
 

@@ -75,6 +75,7 @@ void signal_handler_SIGALRM(int sig)
             {
                 families[i].starvation_level = 0; // dead
                 *shmptr_threshold_num_deceased_families += 1;
+                kill(getppid(), SIGCLD);
             }
         }
         printf("The starvation of the family %d is %d\n", families[i].family_num, families[i].starvation_level);

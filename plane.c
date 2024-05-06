@@ -6,10 +6,14 @@ void get_information_plane(char **argv);
 void createContainers();
 void printContainers();
 void init_signals_handlers();
+void signal_handler_SHOTED(int sig);
 void signal_handler_CRASHED(int sig);
+void checkCollisionPlane();
 //***********************************************************************************
 Plane *plane;
 char *shmptr_plane;
+char *shmptr_threshold_wheat_flour_containers_shoted;
+char *shmptr_threshold_num_cargo_planes_crashed;
 int sem_planes;
 Plane *planes;
 
@@ -37,12 +41,16 @@ int main(int argc, char **argv)
     msg_ground = createMessageQueue(MSGQKEY_GROUND, "plane.c");
 
     shmptr_plane = createSharedMemory(SHKEY_PLANES, num_planes * sizeof(struct Plane), "plane.c");
+    shmptr_threshold_wheat_flour_containers_shoted = createSharedMemory(SHKEY_THRESHOLD_WHEAT_FLOUR_CONTAINERS_SHOTED, sizeof(int), "plane.c");
+    shmptr_threshold_num_cargo_planes_crashed = createSharedMemory(SHKEY_THRESHOLD_NUM_CARGO_PLANES_CRASHED, sizeof(int), "parent.c");
+
     planes = (struct Plane *)shmptr_plane;
 
     sem_planes = createSemaphore(SEMKEY_PLANES, 1, 1, "plane.c");
     // get the information of the plane
     get_information_plane(argv);
-
+    sleep(1);
+    checkCollisionPlane();
     // write the conainers to the ground message queue,after dropping time of the container
     while (1)
     { // Firslty,the plane does not reached yet (it goes to bring containers)
@@ -69,6 +77,8 @@ int main(int argc, char **argv)
 
             if (n != 0) // if the plane is shotted by occupation
             {
+                *shmptr_threshold_wheat_flour_containers_shoted += 1;
+                kill(getppid(), SIGCLD);
                 acquireSem(sem_planes, 0, "plane.c");
                 double ratio = (double)n / plane->containers[i].dropping_time;
                 if (ratio < 0.5)
@@ -115,7 +125,12 @@ int main(int argc, char **argv)
 
 void init_signals_handlers()
 {
-    if (sigset(SIGHUP, signal_handler_CRASHED) == -1)
+    if (sigset(SIGHUP, signal_handler_SHOTED) == -1)
+    { // set the signal handler for SIGINT
+        perror("Signal Error\n");
+        exit(-1);
+    }
+    if (sigset(SIGCLD, signal_handler_CRASHED) == -1)
     { // set the signal handler for SIGINT
         perror("Signal Error\n");
         exit(-1);
@@ -123,12 +138,19 @@ void init_signals_handlers()
 }
 
 // function SIGHUB
-void signal_handler_CRASHED(int sig)
+void signal_handler_SHOTED(int sig)
 {
     printf("The signal %d reached to the plane %d. \n\n", sig, plane->plane_num);
     fflush(stdout);
 }
 
+void signal_handler_CRASHED(int sig)
+{
+    printf("The signal %d reached to the plane %d, the plane is crashed. \n\n", sig, plane->plane_num);
+    fflush(stdout);
+    plane->is_crashed = 1;
+    exit(0);
+}
 void createContainers()
 {
 
@@ -165,7 +187,7 @@ void get_information_plane(char **argv)
     plane->is_refilling = 1;
     plane->pid = getpid();
     plane->plane_num = plane_num;
-
+    plane->is_crashed = 0;
     split_string(argv[2], range_num_containers);
     split_string(argv[3], range_num_bags);
     split_string(argv[4], range_dropping_time);
@@ -179,4 +201,40 @@ void get_information_plane(char **argv)
     printf("The range of the dropping time is: %d - %d\n", rane_dropping_time[0], rane_dropping_time[1]);
     printf("The number of wheat flour containers is: %d\n", num_containers);
     printf("The number of bags is: %d\n", num_bags);*/
+}
+
+void checkCollisionPlane()
+{
+    acquireSem(sem_planes, 0, "plane.c");
+    // Determine the probability of the worker to be killed
+    int plane_crashed = rand() % 2; // 0 means not crashed, 1 means crashed
+    int other_crashed_plane_num;
+
+    if (plane_crashed) // there is a probabilty to crashed,go check if there are planes
+    {
+        printf("hi plane %d\n", plane->plane_num);
+        plane_crashed = 0;
+        for (int i = 0; i < num_planes; i++)
+        {
+            if (!planes[i].is_crashed && planes[i].plane_num != plane->plane_num) // check if there are planes not crashed
+            {
+                printf("The plane %d is collides with the plane %d\n", plane->plane_num, planes[i].plane_num);
+                fflush(stdout);
+                *shmptr_threshold_num_cargo_planes_crashed += 2; // the current plane and the other one will crashed
+                kill(getppid(), SIGCLD);
+                other_crashed_plane_num = planes[i].plane_num;
+                plane_crashed = 1;
+                break;
+            }
+        }
+    }
+    releaseSem(sem_planes, 0, "plane.c");
+
+    if (plane_crashed) // this plane is crashed with the other plane
+    {
+        printf("The plane %d is crashed with the plane %d with pid=%d\n", plane->plane_num, other_crashed_plane_num, planes[other_crashed_plane_num - 1].pid);
+        plane->is_crashed = 1;
+        kill(planes[other_crashed_plane_num - 1].pid, SIGCLD);
+        exit(0);
+    }
 }

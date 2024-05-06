@@ -14,6 +14,7 @@ int compareCollWorkersEnergy(const void *a, const void *b);
 int msg_ground_id;
 int msg_safe_area_id;
 char *shmptr_collecting_committees;
+char *shmptr_threshold_martyred_collecting_committee_workers;
 int sem_collecting_committees;
 int period_trip_committee[2];
 int range_energy_workers[2];
@@ -50,6 +51,8 @@ int main(int argc, char **argv)
 
     // open the shared memory of the committees
     shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, number_of_committees * sizeof(struct Collecting_Committee), "collecting_committe.c");
+    shmptr_threshold_martyred_collecting_committee_workers = createSharedMemory(SHKEY_THRESHOLD_MARTYRED_COLLECTING_COMMITTEE, sizeof(int), "collecting_committe.c");
+
     collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
 
     sem_collecting_committees = createSemaphore(SEMKEY_COLLECTING_COMMITTEES, 1, 1, "collecting_committe.c");
@@ -76,7 +79,7 @@ int main(int argc, char **argv)
             break;
         }
         printf("Committee %d with %d workers is waiting for a container from the ground\n", collecting_committee->committee_num, collecting_committee->num_workers);
- 
+
         while (1)
         {
             if (msgrcv(msg_ground_id, &container, sizeof(container), 0, 0) == -1)
@@ -257,8 +260,10 @@ void killWorker()
         {
             dead_worker_num = sorted_current_collecting_workers[i].worker_num;
             collecting_committee->workers[dead_worker_num - 1].is_martyred = 1;
-            printf("Dead Worker number is %d\n", dead_worker_num);
+            printf("Dead collecting Worker number is %d\n", dead_worker_num);
             collecting_committee->num_killed_workers += 1;
+            *shmptr_threshold_martyred_collecting_committee_workers += 1;
+            kill(getppid(), SIGCLD);
             break;
         }
     }

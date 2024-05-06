@@ -11,6 +11,7 @@ int compareDistWorkersEnergy(const void *a, const void *b);
 //***********************************************************************************
 char *shmptr_plane;
 char *shmptr_collecting_committees;
+char *shmptr_threshold_martyred_distributing_workers;
 Plane *planes;
 Collecting_Committee *collecting_committees;
 int current_planes_numbers[10];                // array of the current plane numbers
@@ -50,6 +51,7 @@ int main(int argc, char **argv)
     shmptr_plane = createSharedMemory(SHKEY_PLANES, num_planes * sizeof(struct Plane), "occupation.c");
     shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, number_of_committees * sizeof(struct Collecting_Committee), "occupation.c");
     shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, num_distributing_workers * sizeof(struct Distributing_Worker), "occupation.c");
+    shmptr_threshold_martyred_distributing_workers = createSharedMemory(SHKEY_THRESHOLD_MARTYRED_DISTRIBUTING_WORKERS, sizeof(int), "occupation.c");
 
     planes = (struct Plane *)shmptr_plane;
     collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
@@ -64,7 +66,7 @@ int main(int argc, char **argv)
 
         {
         case 1:
-            // killPlanes();
+            killPlanes();
             break;
         case 2:
             killCommittees();
@@ -130,9 +132,10 @@ void killDistributingWorkers()
         return;
     }
 
+    *shmptr_threshold_martyred_distributing_workers += 1;
     kill(distributing_workers[dead_worker_num - 1].pid, SIGHUP); // kill the current container in the plane
     printf("Distributing worker %d with pid=%d is shotted by the snipers\n", dead_worker_num, distributing_workers[dead_worker_num - 1].pid);
-
+    kill(getppid(), SIGCLD);
     printf("=====================================================\n");
 }
 
@@ -215,7 +218,7 @@ int getCurrentDistributingWorkers()
         if (worker_killed)
         {
             dead_worker_num = sorted_current_distributing_workers[i].worker_num;
-            printf("Dead Worker number is %d\n", dead_worker_num);
+            printf("Dead distributing Worker number is %d\n", dead_worker_num);
             break;
         }
     }
