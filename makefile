@@ -27,9 +27,8 @@ occupation:	occupation.c functions.c ipcs.c
 
 family: family.c functions.c ipcs.c
 	$(CC) $(CFLAGS) -o family family.c functions.c ipcs.c $(LIBS)
-	
 gui: gui.c
-	$(CC) gui.c functions.c -o gui $(UILIBS)
+	$(CC) gui.c functions.c ipcs.c -o gui $(UILIBS)
 
 run: parent
 	./parent $(ARGS) 

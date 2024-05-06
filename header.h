@@ -24,8 +24,8 @@
 #include <math.h>
 
 #define FILE_NAME "arguments.txt"
-#define GUIFIFO "/tmp/GUIFIFO"
 
+#define MSGKEY_GUI 1234
 #define MAX_LINES 100
 #define MAX_LINE_LENGTH 255
 #define NUM_SEMAPHORES 2
@@ -45,6 +45,7 @@
 
 #define SHKEY_PLANES 4444                // key for shared memory pid of the planes
 #define SHKEY_COLLECTION_COMMITTEES 5555 // key for shared memory pid of the collection committees
+#define SHKEY_SPLITTING_WORKERS 7777     // key for shared memory pid of the splitting workers
 #define SHKEY_SPLITTED_BAGS 6666         // key for shared memory pid of the splitting workers
 #define SHKEY_DISTRIBUTING_WORKERS 5566  // key for shared memory pid of the distributing workers
 #define SHKEY_FAMILIES 3333              // key for shared memory pid of the families
@@ -61,6 +62,17 @@
 #define SEMKEY_SPACES_AVAILABLE 8888      // key for semaphore for the spaces available in the safe storage area
 #define SEMKEY_DISTRIBUTING_WORKERS 5533  // key for semaphore for the distributing workers
 #define SEMKEY_STARVATION_FAMILIES 9999
+
+struct msgbuf
+{
+    long mtype;
+    int x; // x coordinate
+    int y; // y coordinate
+    int z; // z coordinate
+    int r; // red color
+    int g; // green color
+    int b; // blue color
+};
 
 struct String
 {
@@ -117,6 +129,14 @@ struct Collecting_Committee
     int is_tripping;
 };
 typedef struct Collecting_Committee Collecting_Committee;
+
+struct Splitting_Worker
+{
+    pid_t pid;
+    int worker_num;
+    int is_replaced;
+};
+typedef struct Splitting_Worker Splitting_Worker;
 
 struct Family
 {

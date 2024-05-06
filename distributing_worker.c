@@ -15,6 +15,7 @@ int compareFamilies(const void *a, const void *b);
 
 char *shmptr_distributing_workers;
 char *shmptr_splitted_bages;
+char *shmptr_splitting_workers;
 int sem_splitted_bags;
 int sem_spaces_available;
 
@@ -39,14 +40,13 @@ int number_of_workers;
 int range_starv_decrease[2];
 Family *sorted_families;
 int is_there_not_dead_families = 0;
-
+int num_splitting_workers;
 int main(int argc, char **argv)
-
 {
     // check the number of arguments
-    if (argc < 10)
+    if (argc < 11)
     {
-        perror("The user should pass an argument like:distributing_worker_num,range_num_bags, period_trip_workers, range_energy_workers, period_energy_reduction, energy_loss_range,number_of_workers,num_familiesint range_starv_decrease\n");
+        perror("The user should pass an argument like:distributing_worker_num,range_num_bags, period_trip_workers, range_energy_workers, period_energy_reduction, energy_loss_range,number_of_workers,num_familiesint range_starv_decrease,num_slplitting_workers\n");
         exit(-1);
     }
 
@@ -56,23 +56,25 @@ int main(int argc, char **argv)
     distributing_worker_num = atoi(argv[1]);
     number_of_workers = atoi(argv[7]);
     number_of_families = atoi(argv[8]);
-
+    num_splitting_workers = atoi(argv[10]);
     // Open a shared memories
     shmptr_distributing_workers = createSharedMemory(SHKEY_DISTRIBUTING_WORKERS, number_of_workers * sizeof(struct Distributing_Worker), "distributing_worker.c"); // Open a shared memory for the distributing workers
     shmptr_splitted_bages = createSharedMemory(SHKEY_SPLITTED_BAGS, sizeof(Container), "distributing_worker.c");                                                   // Open a shared memory for splitted bages
     shmptr_families = createSharedMemory(SHKEY_FAMILIES, number_of_families * sizeof(struct Family), "distributing_worker.c");                                     // Open the shared memory of all families
+    // shmptr_splitting_workers = createSharedMemory(SHKEY_SPLITTING_WORKERS, num_splitting_workers * sizeof(Splitting_Worker), "splitting_worker.c");                // Create a shared memory for all struct of the splitting workers
 
     distributing_workers = (struct Distributing_Worker *)shmptr_distributing_workers;
     families = (struct Family *)shmptr_families;
 
     // Open the semaphores
-    sem_distributing_workers = createSemaphore(SEMKEY_DISTRIBUTING_WORKERS, 1, 1, "parent.c");
+    sem_distributing_workers = createSemaphore(SEMKEY_DISTRIBUTING_WORKERS, 1, 1, "distributing_wroker.c");
     sem_starviation_familes = createSemaphore(SEMKEY_STARVATION_FAMILIES, 1, 1, "distributing_wroker.c");
     sem_splitted_bags = createSemaphore(SEMKEY_SPLITTED_BAGS, 1, 0, "distributing_wroker.c");
     sem_spaces_available = createSemaphore(SEMKEY_SPACES_AVAILABLE, 1, 1, "distributing_wroker.c");
 
     get_information_worker(argv, distributing_worker_num);
     init_signals_handlers();
+    alarm(periodic_energy_reduction);
 
     while (1)
     {

@@ -9,12 +9,14 @@ int apply_trip_time();
 void get_information_committee(char **argv, int committee_num);
 void killWorker();
 int compareCollWorkersEnergy(const void *a, const void *b);
-//***********************************************************************************
+void checkThereSplittingWorkers(int dead_worker_num);
 
+//***********************************************************************************
 int msg_ground_id;
 int msg_safe_area_id;
 char *shmptr_collecting_committees;
 char *shmptr_threshold_martyred_collecting_committee_workers;
+char *shmptr_splitting_workers;
 int sem_collecting_committees;
 int period_trip_committee[2];
 int range_energy_workers[2];
@@ -29,13 +31,14 @@ Collecting_Committee *collecting_committee;
 Collecting_Committee *collecting_committees;
 Collecting_Committee *temp;
 Worker *sorted_current_collecting_workers;
+Splitting_Worker *splitting_workers;
+int num_splitting_workers;
 int main(int argc, char **argv)
-
 {
     // check the number of arguments
-    if (argc < 8)
+    if (argc < 9)
     {
-        perror("The user shouldn pass an argument like:committee_num, number_of_workers, period_trip_committee, range_energy_workers, period_energy_reduction, energy_loss_range,number_of_committees\n");
+        perror("The user shouldn pass an argument like:committee_num, number_of_workers, period_trip_committee, range_energy_workers, period_energy_reduction, energy_loss_range,number_of_committees,num_splitting_workers\n");
         exit(-1);
     }
 
@@ -44,6 +47,7 @@ int main(int argc, char **argv)
     // get information from the arguments
     int committee_num = atoi(argv[1]);
     number_of_committees = atoi(argv[7]);
+    num_splitting_workers = atoi(argv[8]);
 
     // open the message queues
     msg_ground_id = createMessageQueue(MSGQKEY_GROUND, "collecting_committe.c");
@@ -52,6 +56,8 @@ int main(int argc, char **argv)
     // open the shared memory of the committees
     shmptr_collecting_committees = createSharedMemory(SHKEY_COLLECTION_COMMITTEES, number_of_committees * sizeof(struct Collecting_Committee), "collecting_committe.c");
     shmptr_threshold_martyred_collecting_committee_workers = createSharedMemory(SHKEY_THRESHOLD_MARTYRED_COLLECTING_COMMITTEE, sizeof(int), "collecting_committe.c");
+    shmptr_splitting_workers = createSharedMemory(SHKEY_SPLITTING_WORKERS, num_splitting_workers * sizeof(Splitting_Worker), "splitting_worker.c"); // Create a shared memory for all struct of the splitting workers
+    splitting_workers = (struct Splitting_Worker *)shmptr_splitting_workers;
 
     collecting_committees = (struct Collecting_Committee *)shmptr_collecting_committees;
 
@@ -63,7 +69,7 @@ int main(int argc, char **argv)
 
     // initialize the signal handlers
     init_signals_handlers();
-    // alarm(periodic_energy_reduction);
+    alarm(periodic_energy_reduction);
 
     while (1)
     { // the committee collect the wheat flour from the ground every specified time
@@ -264,6 +270,7 @@ void killWorker()
             collecting_committee->num_killed_workers += 1;
             *shmptr_threshold_martyred_collecting_committee_workers += 1;
             kill(getppid(), SIGCLD);
+            checkThereSplittingWorkers(dead_worker_num);
             break;
         }
     }
@@ -276,4 +283,22 @@ int compareCollWorkersEnergy(const void *a, const void *b)
     Worker *worker1 = (Worker *)a;
     Worker *worker2 = (Worker *)b;
     return worker1->energy - worker2->energy;
+}
+
+void checkThereSplittingWorkers(int dead_worker_num)
+{
+    printf("Checking if there are splitting workers\n");
+    for (int i = 0; i < num_splitting_workers; i++)
+    {
+        if (!splitting_workers[i].is_replaced)
+        {
+            printf("Splitting worker %d with pid=%d is not replaced\n", splitting_workers[i].worker_num, splitting_workers[i].pid);
+            splitting_workers[i].is_replaced = 1;
+            kill(splitting_workers[i].pid, SIGCLD); // send the signal to the splitting worker to be replaced
+            //  the splitting worker is replaced by the martyred worker
+            collecting_committee->workers[dead_worker_num - 1].is_martyred = 0;
+            collecting_committee->workers[dead_worker_num - 1].energy = get_random_number(range_energy_workers[0], range_energy_workers[1]);
+            break;
+        }
+    }
 }
